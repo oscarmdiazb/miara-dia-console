@@ -96,6 +96,11 @@ h2{font-size:17px;margin:18px 0 8px}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:14px;z-index:9;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .loading{color:var(--muted);padding:20px;text-align:center}
+.sum{display:flex;gap:16px;font-size:15px;margin-bottom:4px}.sum b{font-size:20px}
+.prog{position:relative}.prog i{position:absolute;left:0;top:0}.prog i.rec{background:var(--info-l)}
+.help{font-size:13.5px;color:var(--muted);background:none;border:0;padding:0 2px;margin-bottom:10px}
+.card.isok{opacity:.75}
+.okbtn{margin-left:auto;font-weight:700}
 /* ---- enregistrement (studio), téléphone d'abord ---- */
 .noscroll{overflow:hidden}
 .bigstart{width:100%;padding:13px;font-size:16px;margin-bottom:12px}
@@ -116,7 +121,7 @@ h2{font-size:17px;margin:18px 0 8px}
 .st-msg{font-size:14px}.st-msg.bad{color:var(--bad);font-weight:700;padding:4px 0}
 .st-status{font-size:13px;color:var(--muted);min-height:18px}
 .st-status .err{color:var(--bad);font-weight:600}
-.st-meter{display:flex;align-items:center;gap:8px;margin:4px 0;font-variant-numeric:tabular-nums;font-size:15px}
+.st-meter{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0;font-variant-numeric:tabular-nums;font-size:15px}
 .dot{width:12px;height:12px;border-radius:50%;background:var(--grey-l);flex:none}
 .dot.on{background:#E0322B;animation:blink 1s infinite}
 @keyframes blink{50%{opacity:.25}}
@@ -135,6 +140,9 @@ h2{font-size:17px;margin:18px 0 8px}
 .on-ok{background:var(--ok-l);color:var(--ok);border-color:var(--ok)}
 .on-bad{background:var(--bad-l);color:var(--bad);border-color:var(--bad)}
 .btn.wide{width:100%;padding:13px;font-size:17px}
+.st-name{margin:4px 0 8px}
+.frbox{margin-top:14px;color:var(--muted);font-size:15px;line-height:1.45;border-left:3px solid var(--line);padding-left:10px}
+.st-meter .st-status{font-size:13px;color:var(--ok);font-weight:600;min-height:0}
 </style>
 </head>
 <body>
@@ -148,7 +156,7 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
   ["audio","🎙 Audios"],["survey","Enquête"],["choice","Choix de réponses"],
-  ["curriculum","Guide de l'animatrice"],["progress","Avancement"],["recent","Activité"]];
+  ["curriculum","Guide"],["progress","Avancement"]];
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
 const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
 const LABEL = Object.fromEntries([...ST_TEXT,...ST_AUDIO]);
@@ -220,114 +228,94 @@ async function render(reload){
 
 // ---------------------------------------------------------------- listes
 const HELP = {
-  audio:`<b>Ce soir: enregistrer les audios.</b> Les filles écoutent ces clips dans leurs écouteurs.
-   <ol style="margin:6px 0 0 18px;padding:0">
-   <li>Pièce calme. Téléphone à 20 cm de la bouche. Lisez lentement, comme pour une fille de 12 ans.</li>
-   <li>Lisez <b>seulement le malgache</b>. Ne lisez pas ce qui est entre [crochets]. Après « — », lisez les réponses avec une petite pause.</li>
-   <li>Touchez <b>🎙 Mode enregistrement</b>: un clip par écran. <b>●</b> pour enregistrer, <b>■</b> pour arrêter. Le clip est envoyé tout seul.</li>
-   <li>Pas content ? Touchez <b>●</b> encore: la nouvelle prise remplace l'ancienne. Puis <b>Suivant →</b>.</li>
-   <li>Un mot à corriger ? Touchez <b>✏️ Corriger le texte</b>. Les lignes jaunes (REVOIR) sont à vérifier en priorité.</li>
-   <li>Eliane écoute (▶) et touche <b>Vérifié</b> ou <b>À corriger</b>.</li></ol>`,
-  survey:`Le malgache est la langue de l'enquête. Corrigez le texte malgache, puis cliquez <b>Sauvegarder</b>.
-   Quand une ligne est bonne, cliquez <b>Validé</b>. Ne changez jamais ce qui est entre <code>\${…}</code>. Les lignes jaunes (REVOIR) sont à vérifier en priorité.
-   Oscar met ensuite les changements dans le formulaire SurveyCTO.`,
-  choice:`Ce sont les réponses possibles (Oui/Non, échelles…). Même règle: corrigez le malgache, puis <b>Validé</b>.`,
-  curriculum:`Le guide de l'animatrice, bloc par bloc. Écrivez la traduction malgache à droite. Vous pouvez aussi proposer un changement du français.
-   <code>*mot*</code> = italique, <code>**mot**</code> = gras, <code>{ref:…}</code> = numéro de page (à garder).`};
+  audio:`Pièce calme, téléphone à 20 cm. Lisez lentement, <b>seulement le malgache</b> (pas les [crochets]).<br>
+   <b>●</b> enregistrer · <b>■</b> arrêter (le son part tout seul) · <b>▶</b> écouter · bon ? <b>✓ OK</b>. Pas bon ? <b>●</b> pour refaire.`,
+  survey:`Corrigez le malgache si besoin, puis <b>✓ OK</b>. Ne changez pas ce qui est entre <code>\${…}</code>.`,
+  choice:`Les réponses possibles. Corrigez le malgache si besoin, puis <b>✓ OK</b>.`,
+  curriculum:`Écrivez le malgache, puis <b>✓ OK</b>. <code>*mot*</code> = italique, <code>**mot**</code> = gras.`};
+const OK_ST = ()=> S.tab==="audio" ? "verifie" : "valide";
+const SHORT = {vide:"À traduire",brouillon:"À relire",a_revoir:"À relire",valide:"OK",
+  a_enregistrer:"À enregistrer",a_corriger:"À refaire",enregistre:"Enregistré",verifie:"OK"};
+const isRecorded = i => ["enregistre","verifie"].includes(i.status);
 
 function filtered(){
-  const f=S.filters[S.tab]||{}, q=(f.q||"").toLowerCase();
+  const f=S.filters[S.tab]||{}, q=(f.q||"").toLowerCase(), ok=OK_ST(), audio=S.tab==="audio";
   return (S.items[S.tab]||[]).filter(i=>
-    (!f.sec||i.section===f.sec) && (!f.st||i.status===f.st) &&
-    (!f.mine||i.assignee===S.who) && (!f.flag||i.flag) && (!f.pend||i.pending) &&
-    (!q || (i.fr+" "+i.mg+" "+i.ref+" "+i.note+" "+i.assignee).toLowerCase().includes(q)));
+    (!f.sec||i.section===f.sec) &&
+    (!f.show || (f.show==="ok" ? i.status===ok : f.show==="todo" ? (audio ? !isRecorded(i) : i.status!==ok)
+                 : /* torev */ isRecorded(i) && i.status!==ok)) &&
+    (!q || (i.fr+" "+i.mg+" "+i.ref).toLowerCase().includes(q)));
 }
 
 function listView(m){
   const all=S.items[S.tab]||[], audio=S.tab==="audio", f=S.filters[S.tab]=S.filters[S.tab]||{};
-  const sts= audio?ST_AUDIO:ST_TEXT, secs=[...new Set(all.map(i=>i.section))];
+  const secs=[...new Set(all.map(i=>i.section))];
   const list=filtered();
-  m.innerHTML = `<details class="help" ${load("miara_help_"+S.tab)==="closed"?"":"open"}><summary>Comment faire</summary><div style="margin-top:6px">${HELP[S.tab]}</div></details>
-   ${audio?`<button class="btn primary bigstart" id="gostudio">🎙 Mode enregistrement (un clip par écran)</button>`:""}
+  m.innerHTML = `
+   ${audio?`<button class="btn primary bigstart" id="gostudio">🎙 Commencer à enregistrer</button>`:""}
    <div id="stats">${statsHtml()}</div>
+   <div class="help">${HELP[S.tab]}</div>
    <div class="bar">
+     <select id="fshow">
+       <option value="">Tout</option>
+       <option value="todo" ${f.show==="todo"?"selected":""}>${audio?"À enregistrer":"À faire"}</option>
+       ${audio?`<option value="torev" ${f.show==="torev"?"selected":""}>À écouter</option>`:""}
+       <option value="ok" ${f.show==="ok"?"selected":""}>OK</option></select>
      <select id="fsec"><option value="">Toutes les parties</option>${secs.map(s=>`<option ${f.sec===s?"selected":""}>${esc(s)}</option>`).join("")}</select>
-     <select id="fst"><option value="">Tous les statuts</option>${sts.map(([k,t])=>`<option value="${k}" ${f.st===k?"selected":""}>${t}</option>`).join("")}</select>
      <input type="search" id="fq" placeholder="Chercher…" value="${esc(f.q||"")}">
-     ${audio?`<label><input type="checkbox" id="fmine" ${f.mine?"checked":""}> les miens</label>`:""}
-     <label><input type="checkbox" id="fflag" ${f.flag?"checked":""}> REVOIR</label>
-     ${audio?"":`<label><input type="checkbox" id="fpend" ${f.pend?"checked":""}> modifiés</label>`}
-     <button class="btn small" id="rel">↻ Actualiser</button>
    </div>
-   <div class="sec" style="margin-bottom:6px">${list.length} ligne(s)</div>
-   <div id="cards">${list.slice(0,S.shown).map(card).join("") || `<div class="empty">Rien à afficher.</div>`}</div>
-   ${list.length>S.shown?`<div style="text-align:center"><button class="btn" id="more">Voir plus (${list.length-S.shown})</button></div>`:""}
-   <datalist id="people">${[...S.people].map(p=>`<option value="${esc(p)}">`).join("")}</datalist>`;
-  m.querySelector("details").ontoggle=e=>store("miara_help_"+S.tab,e.target.open?"open":"closed");
-  const upd=()=>{ Object.assign(f,{sec:$("#fsec").value,st:$("#fst").value,q:$("#fq").value,
-      mine:$("#fmine")?.checked,flag:$("#fflag").checked,pend:$("#fpend")?.checked}); S.shown=60; listView(m);
+   <div id="cards">${list.slice(0,S.shown).map(card).join("") || `<div class="empty">Rien ici.</div>`}</div>
+   ${list.length>S.shown?`<div style="text-align:center"><button class="btn" id="more">Voir plus (${list.length-S.shown})</button></div>`:""}`;
+  const upd=()=>{ Object.assign(f,{sec:$("#fsec").value,show:$("#fshow").value,q:$("#fq").value}); S.shown=60; listView(m);
       const q=$("#fq"); q.focus(); q.setSelectionRange(q.value.length,q.value.length) };
-  ["#fsec","#fst","#fmine","#fflag","#fpend"].forEach(s=>{ const el=$(s); if(el) el.onchange=upd });
+  $("#fsec").onchange=upd; $("#fshow").onchange=upd;
   let t; $("#fq").oninput=()=>{ clearTimeout(t); t=setTimeout(upd,300) };
-  $("#rel").onclick=()=>render(true);
   if($("#gostudio")) $("#gostudio").onclick=()=>openStudio(null);
   if($("#more")) $("#more").onclick=()=>{ S.shown+=60; listView(m) };
   wire(m);
 }
 
 function statsHtml(){
-  const all=S.items[S.tab]||[], audio=S.tab==="audio", sts=audio?ST_AUDIO:ST_TEXT;
-  const cnt=k=>all.filter(i=>i.status===k).length;
-  const done= audio ? cnt("enregistre")+cnt("verifie") : cnt("valide");
-  const pct= all.length? Math.round(100*done/all.length):0;
-  return `<div class="stats">
-     <div class="stat"><b>${done} / ${all.length}</b><span>${audio?"enregistrés":"validés"}</span></div>
-     ${sts.map(([k,t])=>`<div class="stat"><b>${cnt(k)}</b><span>${t}</span></div>`).join("")}
-     ${audio?"":`<div class="stat"><b>${all.filter(i=>i.pending).length}</b><span>pas encore dans le fichier</span></div>`}
-   </div><div class="prog"><i style="width:${pct}%"></i></div>`;
+  const all=S.items[S.tab]||[], n=all.length, audio=S.tab==="audio";
+  const ok=all.filter(i=>i.status===OK_ST()).length, rec=audio?all.filter(isRecorded).length:ok;
+  const pct=x=>n?100*x/n:0;
+  return `<div class="sum">${audio?`<span><b>${rec}</b>/${n} enregistrés</span>`:""}<span><b>${ok}</b>/${n} OK</span></div>
+    <div class="prog">${audio?`<i class="rec" style="width:${pct(rec)}%"></i>`:""}<i style="width:${pct(ok)}%"></i></div>`;
 }
 
 function card(i){
-  const audio=S.tab==="audio", cur=S.tab==="curriculum", sts=audio?ST_AUDIO:ST_TEXT;
-  const varname = audio ? i.id.replace(/^audio:/,"") : "";
-  const frEdit = !audio;
-  return `<div class="card" data-id="${esc(i.id)}">
+  const audio=S.tab==="audio", cur=S.tab==="curriculum", ok=OK_ST(), isOk=i.status===ok;
+  const v = audio ? i.id.slice(6) : "";
+  const has = audio && !!(takeOf(v)||REC.local[v]);
+  const [q,o] = audio ? splitMg(i.mg) : [i.mg,""], [fq,fo] = audio ? splitMg(i.fr) : [i.fr,""];
+  return `<div class="card ${isOk?"isok":""}" data-id="${esc(i.id)}">
     <div class="ch">
-      <span class="chip s-${i.status}">${LABEL[i.status]||i.status}</span>
-      ${audio?`<span>Nom du clip <span class="saveas">${esc(varname)}</span></span>`:`<span class="ref">${esc(i.ref)}</span>`}
-      ${FIELD[i.field]&&!audio?`<span class="sec">${FIELD[i.field]}</span>`:""}
-      ${i.pending&&!audio?`<span class="chip pend" title="Changé dans la console, pas encore dans le fichier">modifié</span>`:""}
-      <span class="sec">${esc(i.section)}</span>
-      <span class="meta">${i.by?esc(i.by)+" · "+when(i.at):""}</span>
+      <span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span>
+      ${audio?`<span class="saveas">${esc(v)}</span>`:`<span class="ref">${esc(i.ref.split(" · ").pop())}</span>`}
+      ${i.flag?`<span class="chip s-a_revoir" title="${esc(i.flag)}">⚠ texte à vérifier</span>`:""}
     </div>
-    ${i.flag?`<div class="flag">⚠ ${esc(i.flag)}</div>`:""}
     <div class="cols">
       <div>
-        <div class="lang">Malagasy ${audio?"— texte à lire":""}</div>
-        ${audio ? (()=>{ const [q,o]=splitMg(i.mg); return `<textarea class="mg read" data-f="mg" data-opts="${esc(o)}" rows="${Math.min(12,Math.max(2,Math.ceil(q.length/45)))}">${esc(q)}</textarea>
-          ${o?`<div class="opts"><b>— ${esc(o)}</b><br><span class="sec">Réponses: à corriger dans l'onglet « Choix de réponses ».</span></div>`:""}` })()
-        : `<textarea class="mg" data-f="mg" rows="${Math.min(12,Math.max(2,Math.ceil((i.mg||"").length/60)))}">${esc(i.mg)}</textarea>`}
+        <div class="lang">Malagasy</div>
+        ${audio?`<textarea class="mg read" data-f="mg" data-opts="${esc(o)}" rows="${Math.min(10,Math.max(2,Math.ceil(q.length/45)))}">${esc(q)}</textarea>
+          ${o?`<div class="opts">— ${esc(o)}</div>`:""}`
+        :`<textarea class="mg" data-f="mg" rows="${Math.min(12,Math.max(2,Math.ceil((i.mg||"").length/60)))}">${esc(i.mg)}</textarea>`}
         <div class="warn" data-w></div>
       </div>
       <div>
-        <div class="lang">Français ${frEdit?`<button class="link" data-act="editfr">modifier</button>`:"(pour nous)"}</div>
-        <div class="fr" data-frshow>${cur?light(i.fr):esc(i.fr)}</div>
-        <textarea data-f="fr" hidden rows="${Math.min(12,Math.max(2,Math.ceil((i.fr||"").length/60)))}">${esc(i.fr)}</textarea>
+        <div class="lang">Français</div>
+        <div class="fr">${cur?light(fq):esc(fq)}</div>
+        ${fo?`<div class="opts">— ${esc(fo)}</div>`:""}
+        <textarea data-f="fr" hidden>${esc(i.fr)}</textarea>
       </div>
     </div>
-    ${audio?`<div class="foot recrow">
-      <button class="btn primary" data-act="studio">🎙 Enregistrer l'audio</button>
-      <button class="btn" data-act="play" ${takeOf(varname)||REC.local[varname]?"":"disabled"}>▶ Écouter</button>
-      <span class="sec" data-takes>${takeInfo(varname)}</span></div>`:""}
     <div class="foot">
-      ${audio?`<label class="note">Qui enregistre <input data-f="assignee" list="people" value="${esc(i.assignee)}" style="border:1px solid var(--line);border-radius:8px;padding:5px 8px;width:130px;background:var(--card)"></label>
-        ${!i.assignee?`<button class="btn small" data-act="me">C'est moi</button>`:""}`:""}
-      <div class="sbtns">${sts.map(([k,t])=>`<button data-st="${k}" class="${i.status===k?"on s-"+k:""}">${t}</button>`).join("")}</div>
-      <button class="btn primary small" data-act="save" disabled>Sauvegarder</button>
-      <button class="link" data-act="hist">historique</button>
+      ${audio?`<button class="btn primary" data-act="studio">● Enregistrer</button>
+        <button class="btn" data-act="play" ${has?"":"disabled"}>▶ Écouter</button>`:""}
+      <button class="btn primary" data-act="save" hidden>Sauvegarder</button>
+      <button class="btn okbtn ${isOk?"on-ok":""}" data-st="${isOk?(audio?"enregistre":"brouillon"):ok}" ${audio&&!has&&!isOk?"disabled":""}
+        title="${isOk?"Toucher pour annuler":""}">✓ OK</button>
     </div>
-    <textarea class="note" data-f="note" rows="1" placeholder="${audio?"Corrections / mots changés…":"Commentaire…"}" style="margin-top:8px">${esc(i.note)}</textarea>
-    <div class="hist" hidden></div>
   </div>`;
 }
 
@@ -337,7 +325,7 @@ function wire(m){
   m.querySelectorAll(".card").forEach(c=>{
     const i=item(c.dataset.id), save=c.querySelector('[data-act="save"]');
     const dirty=()=>{ const d=[...c.querySelectorAll("[data-f]")].some(el=>fval(el)!==(i[el.dataset.f]||""));
-      save.disabled=!d; c.classList.toggle("dirty",d);
+      save.hidden=!d; c.classList.toggle("dirty",d);
       const w=c.querySelector("[data-w]"); const mg=c.querySelector('[data-f="mg"]').value, fr=c.querySelector('[data-f="fr"]').value;
       w.textContent = (S.tab==="survey"||S.tab==="choice") && vars(fr)!==vars(mg) && mg.trim() ? "Attention: les ${…} ne sont pas les mêmes qu'en français ("+(vars(fr)||"aucun")+")." : "" };
     c.querySelectorAll("[data-f]").forEach(el=>{ el.oninput=dirty;
@@ -348,7 +336,6 @@ function wire(m){
     if(ef) ef.onclick=()=>{ c.querySelector("[data-frshow]").hidden=true; const t=c.querySelector('[data-f="fr"]'); t.hidden=false; t.focus(); ef.remove() };
     const me=c.querySelector('[data-act="me"]');
     if(me) me.onclick=()=>{ c.querySelector('[data-f="assignee"]').value=S.who; doSave(c,{}) };
-    c.querySelector('[data-act="hist"]').onclick=()=>showHist(c,i);
     const sb=c.querySelector('[data-act="studio"]');
     if(sb) sb.onclick=()=>openStudio(i.id);
     const pb=c.querySelector('[data-act="play"]');
@@ -363,8 +350,7 @@ async function doSave(c,extra){
   const i=item(c.dataset.id), body={action:"save",id:i.id,base:i.at};
   c.querySelectorAll("[data-f]").forEach(el=>{ if(fval(el)!==(i[el.dataset.f]||"")) body[el.dataset.f]=fval(el) });
   Object.assign(body,extra);
-  if(S.tab==="audio" && extra.status && ["enregistre","verifie"].includes(extra.status) && !c.querySelector('[data-f="assignee"]').value.trim()){
-    body.assignee=S.who; }
+
   c.style.opacity=.6;
   try{
     const r=await api(body);
@@ -382,7 +368,7 @@ async function doSave(c,extra){
     const tmp=document.createElement("div"); tmp.innerHTML=card(i); const n=tmp.firstElementChild;
     c.replaceWith(n); wire({querySelectorAll:s=>s===".card"?[n]:[]});
     const st=$("#stats"); if(st) st.innerHTML=statsHtml();
-    toast("Sauvegardé ✓");
+    toast(extra.status? "OK ✓" : "Sauvegardé ✓");
   }catch(e){ c.style.opacity=1; toast("Pas enregistré: "+e.message) }
 }
 
@@ -424,14 +410,11 @@ async function progressView(m){
     <div class="sec" style="margin-bottom:8px">Dernière mise à jour: ${p.synced_at?when(p.synced_at):"jamais"}</div>${field}
     <h2>Préparation</h2><table>
     ${row("Audios enregistrés","audio",["enregistre","verifie"])}
-    ${row("Audios vérifiés","audio",["verifie"])}
-    ${row("Enquête: lignes validées","survey",["valide"])}
-    ${row("Choix de réponses validés","choice",["valide"])}
-    ${row("Guide: blocs traduits","curriculum",["brouillon","valide"])}
-    ${row("Guide: blocs validés","curriculum",["valide"])}</table>
-    <h2>Audios par personne</h2><table><tr><th>Qui</th><th class="n">Assignés</th><th class="n">Enregistrés</th></tr>
-    ${Object.entries(S.items.audio.reduce((a,i)=>{ const k=i.assignee||"(personne)"; a[k]=a[k]||[0,0]; a[k][0]++; if(["enregistre","verifie"].includes(i.status)) a[k][1]++; return a },{}))
-      .map(([k,[n,dn]])=>`<tr><td>${esc(k)}</td><td class="n">${n}</td><td class="n">${dn}</td></tr>`).join("")}</table>`;
+    ${row("Audios OK","audio",["verifie"])}
+    ${row("Enquête OK","survey",["valide"])}
+    ${row("Choix de réponses OK","choice",["valide"])}
+    ${row("Guide OK","curriculum",["valide"])}</table>
+`;
 }
 
 async function recentView(m){
@@ -454,7 +437,7 @@ async function loadTakes(){ try{ const r=await aapi({action:"meta"}); if(r.ok) S
   for(const v in REC.local) if(REC.local[v].remote && REC.local[v].id!==S.takes[v]?.id) delete REC.local[v] }catch(e){} }
 function takeOf(v){ return S.takes[v] }
 function takeInfo(v){ const t=S.takes[v], q=Q.forVar(v);
-  let s = t ? `🎧 ${t.n} prise${t.n>1?"s":""} · dernière: ${esc(t.who)} ${when(t.at)}` : "Pas encore de prise.";
+  let s = t ? "✓ Enregistré" : "";
   if(q) s += ` · <b class="warnc">⏳ ${q} pas encore envoyée${q>1?"s":""}</b>`;
   return s }
 const fmt=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+":"+String(s%60).padStart(2,"0") };
@@ -608,7 +591,7 @@ function upLine(v){
   if(pend.length){ const st=Q.state[pend[0].cid];
     if(st?.err) return `<span class="err">⚠ Pas encore envoyé: ${esc(st.err)}. Nouvel essai automatique. ${pend.every(x=>x.saved)?"La prise est gardée sur ce téléphone.":"Ne fermez pas la page."}</span>`;
     return `⏳ Envoi… ${st?Math.round(100*st.pct):0}%` }
-  const t=S.takes[v]; return t?`✓ Envoyé · ${t.n} prise${t.n>1?"s":""} · dernière: ${esc(t.who)} ${when(t.at)}`:"" }
+  return S.takes[v]?"✓ Enregistré":"" }
 function studioUp(v,full){ const all=S.items.audio||[], i=all[ST.idx]; if(!$("#studio")||!i||i.id!=="audio:"+v) return;
   if(full && REC.state==="idle") return studioRender();
   const el=$("#studio .st-status"); if(el) el.innerHTML=upLine(v) }
@@ -618,54 +601,46 @@ function studioTimer(){ const el=$("#sttime"); const ms=Date.now()-REC.t0; if(el
 function studioRender(){
   const el=$("#studio"); if(!el) return;
   const all=S.items.audio||[], i=all[ST.idx]; if(!i){ el.innerHTML=`<div class="empty">Rien à enregistrer.</div>`; return }
-  const v=i.id.slice(6), [q,o]=splitMg(i.mg), rec=REC.state==="rec", busy=REC.state!=="idle";
-  const done=all.filter(doneSt).length, hasTake=!!(S.takes[v]||REC.local[v]);
+  const v=i.id.slice(6), [q,o]=splitMg(i.mg), [fq,fo]=splitMg(i.fr), rec=REC.state==="rec", busy=REC.state!=="idle";
+  const done=all.filter(doneSt).length, hasTake=!!(S.takes[v]||REC.local[v]), isOk=i.status==="verifie";
   el.innerHTML=`
-  <div class="st-top"><button class="btn small" id="stclose">✕ Fermer</button>
-    <span><b>${done}/${all.length}</b> enregistrés</span>
-    <select id="stmode" aria-label="Ordre"><option value="todo" ${ST.mode==="todo"?"selected":""}>→ = prochain à faire</option><option value="all" ${ST.mode==="all"?"selected":""}>→ = clip suivant</option></select></div>
-  <div class="st-head"><span class="chip s-${i.status}">${LABEL[i.status]||i.status}</span>
-    <span class="saveas">${esc(v)}</span><span class="sec">${ST.idx+1}/${all.length} · ${esc(i.section)}</span></div>
-  ${i.flag?`<div class="flag">⚠ ${esc(i.flag)}</div>`:""}
+  <div class="st-top"><button class="btn small" id="stclose">✕</button>
+    <span><b>${done}</b>/${all.length} enregistrés</span>
+    <span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span></div>
   <div class="stext">
-    ${ST.edit?`<textarea id="stedit" class="mg read" rows="9">${esc(q)}</textarea>
-      <div class="foot"><button class="btn primary" id="stsave">Sauvegarder le texte</button><button class="btn" id="stcancel">Annuler</button></div>`
+    <div class="st-name"><span class="saveas">${esc(v)}</span>${i.flag?` <span class="chip s-a_revoir">⚠ texte à vérifier</span>`:""}</div>
+    ${ST.edit?`<textarea id="stedit" class="mg read" rows="8">${esc(q)}</textarea>
+      <div class="foot"><button class="btn primary" id="stsave">Sauvegarder</button><button class="btn" id="stcancel">Annuler</button></div>`
       :`<div class="readbig">${readHtml(q)}</div>`}
-    ${o?`<div class="opts"><span class="readbig2">— ${esc(o)}</span><br><span class="sec">Réponses: à corriger dans l'onglet « Choix de réponses ».</span></div>`:""}
-    ${!ST.edit&&!busy?`<p><button class="btn small" id="stedbtn">✏️ Corriger le texte</button></p>`:""}
-    <details class="frgloss"><summary>Français (pour nous)</summary><div>${esc(i.fr)}</div></details>
-    ${i.note?`<div class="sec">Corrections: ${esc(i.note)}</div>`:""}
+    ${o?`<div class="readbig2">— ${esc(o)}</div>`:""}
+    <div class="frbox">${esc(fq)}${fo?`<br>— ${esc(fo)}`:""}</div>
+    ${!ST.edit&&!busy?`<button class="link" id="stedbtn">✏️ corriger le malgache</button>`:""}
   </div>
   <div class="st-ctl">
     <div class="st-msg ${ST.msgc}">${esc(ST.msg)}</div>
-    <div class="st-status">${upLine(v)}</div>
-    <div class="st-meter"><span class="dot ${rec?"on":""}"></span><span id="sttime">${rec?fmt(Date.now()-REC.t0):(REC.local[v]?.dur?fmt(REC.local[v].dur):"0:00")}</span><span id="meter"><i></i></span></div>
+    <div class="st-meter"><span class="dot ${rec?"on":""}"></span><span id="sttime">${rec?fmt(Date.now()-REC.t0):(REC.local[v]?.dur?fmt(REC.local[v].dur):"0:00")}</span><span id="meter"><i></i></span><span class="st-status">${upLine(v)}</span></div>
     <div class="st-btns">
       <button class="round side" id="stprev" ${busy?"disabled":""} aria-label="Clip précédent">←</button>
-      ${rec?`<button class="round stop" id="ststop" aria-label="Arrêter">■<small>STOP</small></button>`
-           :`<button class="round rec" id="strec" ${busy||ST.edit?"disabled":""} aria-label="Enregistrer">●<small>${hasTake?"REFAIRE":"ENREG."}</small></button>`}
+      ${rec?`<button class="round stop" id="ststop" aria-label="Arrêter">■</button>`
+           :`<button class="round rec" id="strec" ${busy||ST.edit?"disabled":""} aria-label="Enregistrer">●</button>`}
       <button class="round side" id="stnext" ${busy?"disabled":""} aria-label="Clip suivant">→</button>
     </div>
     <div class="st-row2">
       <button class="btn" id="stplay" ${hasTake&&!busy?"":"disabled"}>▶ Écouter</button>
-      <button class="btn ${i.status==="verifie"?"on-ok":""}" id="stok" ${busy||!S.takes[v]?"disabled":""}>✓ Vérifié</button>
-      <button class="btn ${i.status==="a_corriger"?"on-bad":""}" id="stbad" ${busy?"disabled":""}>✗ À corriger</button>
+      <button class="btn ${isOk?"on-ok":""}" id="stok" ${busy||!S.takes[v]?"disabled":""}>✓ OK</button>
+      <button class="btn primary" id="stgo" ${busy?"disabled":""}>Suivant →</button>
     </div>
-    <button class="btn primary wide" id="stgo" ${busy?"disabled":""}>Suivant →</button>
   </div>`;
   const on=(s,f)=>{ const b=el.querySelector(s); if(b) b.onclick=f };
   on("#stclose",closeStudio); on("#stprev",()=>go(-1)); on("#stnext",()=>go(1)); on("#stgo",()=>go(1));
   on("#strec",()=>startRec(v)); on("#ststop",stopRec);
   on("#stplay",e=>playTake(v,e.currentTarget));
-  on("#stok",()=>studioSave(i,{status:"verifie"},false));
-  on("#stbad",()=>studioSave(i,{status:"a_corriger"},false));
+  on("#stok",()=>studioSave(i,{status:isOk?"enregistre":"verifie"},false));
   on("#stedbtn",()=>{ ST.edit=true; studioRender(); $("#stedit")?.focus() });
   on("#stcancel",()=>{ ST.edit=false; studioRender() });
   on("#stsave",async()=>{ const t=$("#stedit").value.trim(); const mg=t+(o?" — "+o:"");
     if(mg===i.mg){ ST.edit=false; return studioRender() }
-    const note=(i.note?i.note+"\n":"")+"Texte corrigé par "+S.who+" ("+when(new Date().toISOString())+")";
-    if(await studioSave(i,{mg,note},true)) toast("Texte corrigé ✓ — ré-enregistrez le clip si besoin") });
-  const sm=el.querySelector("#stmode"); if(sm) sm.onchange=()=>{ ST.mode=sm.value };
+    if(await studioSave(i,{mg},true)) toast("Sauvegardé ✓ — réenregistrez le clip") });
 }
 async function studioSave(i,fields,checkBase){
   try{ const r=await api({action:"save",id:i.id,base:checkBase?i.at:"",...fields});
