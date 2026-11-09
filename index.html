@@ -195,8 +195,7 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["audio","🎙 Audios"],["preview","👁 Aperçu"],["survey","Enquête"],["choice","Choix de réponses"],
-  ["curriculum","Guide"],["progress","Avancement"]];
+  ["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["preview","👁 Aperçu"],["progress","Avancement"]];
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
 const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
 const LABEL = Object.fromEntries([...ST_TEXT,...ST_AUDIO]);
@@ -273,7 +272,7 @@ const HELP = {
    2. <b>●</b> enregistrer · <b>■</b> arrêter · <b>▶</b> écouter. Bon ? <b>✓ Audio prêt</b>. Pas bon ? <b>●</b> pour refaire.<br>
    Lisez seulement le malgache (pas les [crochets]). Après « — », lisez aussi les réponses.`,
   survey:`Relisez le malgache. Corrigez si besoin, puis <b>✓ Texte prêt</b>. Ne changez pas <code>\${…}</code>.`,
-  choice:`Les réponses possibles. Corrigez le malgache si besoin, puis <b>✓ Texte prêt</b>.`,
+  choice:`Les réponses (Oui / Non, échelles…). Elles s'affichent en boutons et sont lues à la fin des clips, après « — ». Corrigez le malgache ici une seule fois, puis <b>✓ Texte prêt</b>.`,
   curriculum:`Écrivez le malgache, puis <b>✓ Texte prêt</b>. <code>*mot*</code> = italique, <code>**mot**</code> = gras.`};
 const SHORT = {vide:"À traduire",brouillon:"À relire",a_revoir:"À relire",valide:"Texte prêt",
   a_enregistrer:"À enregistrer",a_corriger:"À refaire",enregistre:"Enregistré",verifie:"Audio prêt"};
@@ -459,9 +458,9 @@ async function showHist(c,i){
 async function progressView(m){
   m.innerHTML=`<div class="loading">Chargement…</div>`;
   const [p,...kinds]=await Promise.all([api({action:"progress"}),
-    ...["audio","survey","choice","curriculum"].map(k=>S.items[k]?Promise.resolve({items:S.items[k]}):api({action:"list",kind:k}))]);
-  ["audio","survey","choice","curriculum"].forEach((k,n)=>S.items[k]=kinds[n].items||[]);
-  const row=(name,k,doneSt)=>{ const a=S.items[k], d=a.filter(i=>doneSt.includes(i.status)).length;
+    ...["audio","choice"].map(k=>S.items[k]?Promise.resolve({items:S.items[k]}):api({action:"list",kind:k}))]);
+  ["audio","choice"].forEach((k,n)=>S.items[k]=kinds[n].items||[]);
+  const row=(name,k,doneSt)=>{ const a=S.items[k], d=a.filter(i=>doneSt==="text"?i.text_ready:doneSt.includes(i.status)).length;
     return `<tr><td>${name}</td><td class="n">${d} / ${a.length}</td><td style="width:40%"><div class="prog" style="margin:0"><i style="width:${a.length?100*d/a.length:0}%"></i></div></td></tr>` };
   const d=p.data;
   let field=`<div class="empty">Pas encore de données de terrain.<br>Oscar lance <code>python3 console/sync_progress.py</code> pour les mettre à jour.</div>`;
@@ -480,11 +479,11 @@ async function progressView(m){
   m.innerHTML=`<h2 style="margin-top:0">Terrain (SurveyCTO)</h2>
     <div class="sec" style="margin-bottom:8px">Dernière mise à jour: ${p.synced_at?when(p.synced_at):"jamais"}</div>${field}
     <h2>Préparation</h2><table>
-    ${row("Audios enregistrés","audio",["enregistre","verifie"])}
-    ${row("Audios OK","audio",["verifie"])}
-    ${row("Enquête OK","survey",["valide"])}
-    ${row("Choix de réponses OK","choice",["valide"])}
-    ${row("Guide OK","curriculum",["valide"])}</table>
+    ${row("Audio enquête · texte prêt","audio","text")}
+    ${row("Audio enquête · enregistrés","audio",["enregistre","verifie"])}
+    ${row("Audio enquête · audio prêt","audio",["verifie"])}
+    ${row("Choix de réponses · texte prêt","choice",["valide"])}
+</table>
 `;
 }
 
