@@ -100,7 +100,21 @@ h2{font-size:17px;margin:18px 0 8px}
 .prog{position:relative}.prog i{position:absolute;left:0;top:0}.prog i.rec{background:var(--info-l)}
 .help{font-size:13.5px;color:var(--muted);background:none;border:0;padding:0 2px;margin-bottom:10px}
 .card.isok{opacity:.75}
-.okbtn{margin-left:auto;font-weight:700}
+.okbtns{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.okbtn{font-weight:700}
+.grp{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+.grp>summary{list-style:none;cursor:pointer;padding:11px 14px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::before{content:"▸";color:var(--muted);margin-right:-4px}
+.grp[open]>summary::before{content:"▾"}
+.grp[open]>summary{border-bottom:1px solid var(--line)}
+.gname{font-weight:700;flex:1 1 200px}
+.gprog{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.mbar{display:inline-block;width:46px;height:7px;background:var(--grey-l);border-radius:4px;overflow:hidden;margin-right:6px}
+.mbar i{display:block;height:100%;background:var(--ok)}
+.mbar.a i{background:var(--info)}
+.gcards{padding:10px}
+.gcards .card{margin-bottom:8px}
 /* ---- enregistrement (studio), téléphone d'abord ---- */
 .noscroll{overflow:hidden}
 .bigstart{width:100%;padding:13px;font-size:16px;margin-bottom:12px}
@@ -228,29 +242,44 @@ async function render(reload){
 
 // ---------------------------------------------------------------- listes
 const HELP = {
-  audio:`Pièce calme, téléphone à 20 cm. Lisez lentement, <b>seulement le malgache</b> (pas les [crochets]).<br>
-   <b>●</b> enregistrer · <b>■</b> arrêter (le son part tout seul) · <b>▶</b> écouter · bon ? <b>✓ OK</b>. Pas bon ? <b>●</b> pour refaire.`,
-  survey:`Corrigez le malgache si besoin, puis <b>✓ OK</b>. Ne changez pas ce qui est entre <code>\${…}</code>.`,
-  choice:`Les réponses possibles. Corrigez le malgache si besoin, puis <b>✓ OK</b>.`,
-  curriculum:`Écrivez le malgache, puis <b>✓ OK</b>. <code>*mot*</code> = italique, <code>**mot**</code> = gras.`};
-const OK_ST = ()=> S.tab==="audio" ? "verifie" : "valide";
-const SHORT = {vide:"À traduire",brouillon:"À relire",a_revoir:"À relire",valide:"OK",
-  a_enregistrer:"À enregistrer",a_corriger:"À refaire",enregistre:"Enregistré",verifie:"OK"};
+  audio:`1. Relisez le malgache. Bon ? <b>✓ Texte prêt</b>.<br>
+   2. <b>●</b> enregistrer · <b>■</b> arrêter · <b>▶</b> écouter. Bon ? <b>✓ Audio prêt</b>. Pas bon ? <b>●</b> pour refaire.<br>
+   Lisez seulement le malgache (pas les [crochets]). Après « — », lisez aussi les réponses.`,
+  survey:`Relisez le malgache. Corrigez si besoin, puis <b>✓ Texte prêt</b>. Ne changez pas <code>\${…}</code>.`,
+  choice:`Les réponses possibles. Corrigez le malgache si besoin, puis <b>✓ Texte prêt</b>.`,
+  curriculum:`Écrivez le malgache, puis <b>✓ Texte prêt</b>. <code>*mot*</code> = italique, <code>**mot**</code> = gras.`};
+const SHORT = {vide:"À traduire",brouillon:"À relire",a_revoir:"À relire",valide:"Texte prêt",
+  a_enregistrer:"À enregistrer",a_corriger:"À refaire",enregistre:"Enregistré",verifie:"Audio prêt"};
 const isRecorded = i => ["enregistre","verifie"].includes(i.status);
+const textOk = i => S.tab==="audio" ? !!i.text_ready : i.status==="valide";
+const audioOk = i => i.status==="verifie";
+const allOk = i => textOk(i) && (S.tab!=="audio" || audioOk(i));
+S.open = S.open || {};
 
 function filtered(){
-  const f=S.filters[S.tab]||{}, q=(f.q||"").toLowerCase(), ok=OK_ST(), audio=S.tab==="audio";
-  return (S.items[S.tab]||[]).filter(i=>
-    (!f.sec||i.section===f.sec) &&
-    (!f.show || (f.show==="ok" ? i.status===ok : f.show==="todo" ? (audio ? !isRecorded(i) : i.status!==ok)
-                 : /* torev */ isRecorded(i) && i.status!==ok)) &&
-    (!q || (i.fr+" "+i.mg+" "+i.ref).toLowerCase().includes(q)));
+  const f=S.filters[S.tab]||{}, q=(f.q||"").toLowerCase();
+  const show = { "":()=>true, rec:i=>!isRecorded(i), text:i=>!textOk(i),
+                 audio:i=>isRecorded(i)&&!audioOk(i), ready:allOk, todo:i=>!allOk(i) }[f.show||""] || (()=>true);
+  return (S.items[S.tab]||[]).filter(i=> show(i) && (!q || (i.fr+" "+i.mg+" "+i.ref).toLowerCase().includes(q)));
+}
+
+function counts(list){
+  const n=list.length, t=list.filter(textOk).length, r=list.filter(isRecorded).length, a=list.filter(audioOk).length;
+  return {n,t,r,a};
+}
+function bar(x,n,cls){ return `<span class="mbar ${cls||""}"><i style="width:${n?100*x/n:0}%"></i></span>` }
+function groupSum(sec){
+  const list=(S.items[S.tab]||[]).filter(i=>i.section===sec), c=counts(list), audio=S.tab==="audio";
+  const done = audio ? (c.t===c.n && c.a===c.n) : c.t===c.n;
+  return `<span class="gname">${done?"✅ ":""}${esc(sec.replace(/^\d+ · /,""))}</span>
+    <span class="gprog"><span>Texte ${c.t}/${c.n}</span>${bar(c.t,c.n)}
+    ${audio?`<span>Audio ${c.a}/${c.n}</span>${bar(c.a,c.n,"a")}`:""}</span>`;
 }
 
 function listView(m){
   const all=S.items[S.tab]||[], audio=S.tab==="audio", f=S.filters[S.tab]=S.filters[S.tab]||{};
-  const secs=[...new Set(all.map(i=>i.section))];
-  const list=filtered();
+  const list=filtered(), secs=[...new Set(all.map(i=>i.section))];
+  const op=S.open[S.tab]=S.open[S.tab]||new Set(), searching=!!(f.q||f.show);
   m.innerHTML = `
    ${audio?`<button class="btn primary bigstart" id="gostudio">🎙 Commencer à enregistrer</button>`:""}
    <div id="stats">${statsHtml()}</div>
@@ -258,41 +287,51 @@ function listView(m){
    <div class="bar">
      <select id="fshow">
        <option value="">Tout</option>
-       <option value="todo" ${f.show==="todo"?"selected":""}>${audio?"À enregistrer":"À faire"}</option>
-       ${audio?`<option value="torev" ${f.show==="torev"?"selected":""}>À écouter</option>`:""}
-       <option value="ok" ${f.show==="ok"?"selected":""}>OK</option></select>
-     <select id="fsec"><option value="">Toutes les parties</option>${secs.map(s=>`<option ${f.sec===s?"selected":""}>${esc(s)}</option>`).join("")}</select>
+       ${audio?`<option value="text" ${f.show==="text"?"selected":""}>Texte pas prêt</option>
+         <option value="rec" ${f.show==="rec"?"selected":""}>Pas encore enregistré</option>
+         <option value="audio" ${f.show==="audio"?"selected":""}>À écouter (audio pas prêt)</option>`
+       :`<option value="todo" ${f.show==="todo"?"selected":""}>Texte pas prêt</option>`}
+       <option value="ready" ${f.show==="ready"?"selected":""}>Tout prêt</option></select>
      <input type="search" id="fq" placeholder="Chercher…" value="${esc(f.q||"")}">
    </div>
-   <div id="cards">${list.slice(0,S.shown).map(card).join("") || `<div class="empty">Rien ici.</div>`}</div>
-   ${list.length>S.shown?`<div style="text-align:center"><button class="btn" id="more">Voir plus (${list.length-S.shown})</button></div>`:""}`;
-  const upd=()=>{ Object.assign(f,{sec:$("#fsec").value,show:$("#fshow").value,q:$("#fq").value}); S.shown=60; listView(m);
+   <div id="groups">${secs.map(sec=>{ const its=list.filter(i=>i.section===sec); if(!its.length) return "";
+       const open = searching || op.has(sec);
+       return `<details class="grp" data-sec="${esc(sec)}" ${open?"open":""}><summary>${groupSum(sec)}</summary>
+         <div class="gcards">${open?its.map(card).join(""):""}</div></details>` }).join("") || `<div class="empty">Rien ici.</div>`}</div>`;
+  const upd=()=>{ Object.assign(f,{show:$("#fshow").value,q:$("#fq").value}); listView(m);
       const q=$("#fq"); q.focus(); q.setSelectionRange(q.value.length,q.value.length) };
-  $("#fsec").onchange=upd; $("#fshow").onchange=upd;
+  $("#fshow").onchange=upd;
   let t; $("#fq").oninput=()=>{ clearTimeout(t); t=setTimeout(upd,300) };
   if($("#gostudio")) $("#gostudio").onclick=()=>openStudio(null);
-  if($("#more")) $("#more").onclick=()=>{ S.shown+=60; listView(m) };
+  m.querySelectorAll("details.grp").forEach(d=>d.ontoggle=()=>{
+    const sec=d.dataset.sec; d.open?op.add(sec):op.delete(sec);
+    const box=d.querySelector(".gcards");
+    if(d.open && !box.children.length){ box.innerHTML=filtered().filter(i=>i.section===sec).map(card).join(""); wire(box) } });
   wire(m);
 }
 
 function statsHtml(){
-  const all=S.items[S.tab]||[], n=all.length, audio=S.tab==="audio";
-  const ok=all.filter(i=>i.status===OK_ST()).length, rec=audio?all.filter(isRecorded).length:ok;
-  const pct=x=>n?100*x/n:0;
-  return `<div class="sum">${audio?`<span><b>${rec}</b>/${n} enregistrés</span>`:""}<span><b>${ok}</b>/${n} OK</span></div>
-    <div class="prog">${audio?`<i class="rec" style="width:${pct(rec)}%"></i>`:""}<i style="width:${pct(ok)}%"></i></div>`;
+  const all=S.items[S.tab]||[], c=counts(all), audio=S.tab==="audio";
+  return `<div class="sum"><span><b>${c.t}</b>/${c.n} textes prêts</span>
+    ${audio?`<span><b>${c.r}</b>/${c.n} enregistrés</span><span><b>${c.a}</b>/${c.n} audios prêts</span>`:""}</div>`;
+}
+function refreshProgress(sec){
+  const st=$("#stats"); if(st) st.innerHTML=statsHtml();
+  const d=[...document.querySelectorAll("details.grp")].find(x=>x.dataset.sec===sec);
+  if(d) d.querySelector("summary").innerHTML=groupSum(sec);
 }
 
 function card(i){
-  const audio=S.tab==="audio", cur=S.tab==="curriculum", ok=OK_ST(), isOk=i.status===ok;
+  const audio=S.tab==="audio", cur=S.tab==="curriculum";
   const v = audio ? i.id.slice(6) : "";
   const has = audio && !!(takeOf(v)||REC.local[v]);
   const [q,o] = audio ? splitMg(i.mg) : [i.mg,""], [fq,fo] = audio ? splitMg(i.fr) : [i.fr,""];
-  return `<div class="card ${isOk?"isok":""}" data-id="${esc(i.id)}">
+  const tOk=textOk(i), aOk=audioOk(i);
+  return `<div class="card ${allOk(i)?"isok":""}" data-id="${esc(i.id)}">
     <div class="ch">
-      <span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span>
-      ${audio?`<span class="saveas">${esc(v)}</span>`:`<span class="ref">${esc(i.ref.split(" · ").pop())}</span>`}
-      ${i.flag?`<span class="chip s-a_revoir" title="${esc(i.flag)}">⚠ texte à vérifier</span>`:""}
+      ${audio?`<span class="saveas">${esc(v)}</span><span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span>`
+             :`<span class="ref">${esc(i.ref.split(" · ").pop())}</span>`}
+      ${i.flag&&!tOk?`<span class="chip s-a_revoir" title="${esc(i.flag)}">⚠ texte à vérifier</span>`:""}
     </div>
     <div class="cols">
       <div>
@@ -310,11 +349,14 @@ function card(i){
       </div>
     </div>
     <div class="foot">
-      ${audio?`<button class="btn primary" data-act="studio">● Enregistrer</button>
-        <button class="btn" data-act="play" ${has?"":"disabled"}>▶ Écouter</button>`:""}
       <button class="btn primary" data-act="save" hidden>Sauvegarder</button>
-      <button class="btn okbtn ${isOk?"on-ok":""}" data-st="${isOk?(audio?"enregistre":"brouillon"):ok}" ${audio&&!has&&!isOk?"disabled":""}
-        title="${isOk?"Toucher pour annuler":""}">✓ OK</button>
+      ${audio?`<button class="btn" data-act="studio">● Enregistrer</button>
+        <button class="btn" data-act="play" ${has?"":"disabled"}>▶</button>`:""}
+      <span class="okbtns">
+        ${audio?`<button class="btn okbtn ${tOk?"on-ok":""}" data-tr="${tOk?0:1}">✓ Texte prêt</button>
+          <button class="btn okbtn ${aOk?"on-ok":""}" data-st="${aOk?"enregistre":"verifie"}" ${!has&&!aOk?"disabled title='Enregistrez d’abord'":""}>✓ Audio prêt</button>`
+        :`<button class="btn okbtn ${tOk?"on-ok":""}" data-st="${tOk?"brouillon":"valide"}">✓ Texte prêt</button>`}
+      </span>
     </div>
   </div>`;
 }
@@ -332,6 +374,7 @@ function wire(m){
       el.onkeydown=e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){ e.preventDefault(); if(!save.disabled) doSave(c,{}) } } });
     save.onclick=()=>doSave(c,{});
     c.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>doSave(c,{status:b.dataset.st}));
+    c.querySelectorAll("[data-tr]").forEach(b=>b.onclick=()=>doSave(c,{text_ready:b.dataset.tr==="1"}));
     const ef=c.querySelector('[data-act="editfr"]');
     if(ef) ef.onclick=()=>{ c.querySelector("[data-frshow]").hidden=true; const t=c.querySelector('[data-f="fr"]'); t.hidden=false; t.focus(); ef.remove() };
     const me=c.querySelector('[data-act="me"]');
@@ -363,12 +406,13 @@ async function doSave(c,extra){
     }
     if(!r.ok) throw new Error(r.error);
     for(const k of ["fr","mg","note","assignee"]) if(k in body) i[k]=body[k];
+    if("text_ready" in r) i.text_ready=r.text_ready;
     i.status=r.status; i.at=r.at; i.by=S.who; i.pending=r.pending;
     if(i.assignee) S.people.add(i.assignee);
     const tmp=document.createElement("div"); tmp.innerHTML=card(i); const n=tmp.firstElementChild;
     c.replaceWith(n); wire({querySelectorAll:s=>s===".card"?[n]:[]});
-    const st=$("#stats"); if(st) st.innerHTML=statsHtml();
-    toast(extra.status? "OK ✓" : "Sauvegardé ✓");
+    refreshProgress(i.section);
+    toast(Object.keys(extra).length? "Prêt ✓" : "Sauvegardé ✓");
   }catch(e){ c.style.opacity=1; toast("Pas enregistré: "+e.message) }
 }
 
@@ -564,7 +608,7 @@ function refreshCard(v){
   if(S.tab!=="audio") return;
   const i=(S.items.audio||[]).find(x=>x.id==="audio:"+v), c=document.querySelector(`.card[data-id="audio:${CSS.escape(v)}"]`);
   if(c&&i){ const t=document.createElement("div"); t.innerHTML=card(i); const n=t.firstElementChild; c.replaceWith(n); wire({querySelectorAll:s=>s===".card"?[n]:[]}) }
-  const st=$("#stats"); if(st) st.innerHTML=statsHtml() }
+  if(i) refreshProgress(i.section) }
 
 // ---- le studio: un clip par écran
 const ST={idx:0,mode:"todo",edit:false,msg:"",msgc:""};
@@ -627,15 +671,17 @@ function studioRender(){
     </div>
     <div class="st-row2">
       <button class="btn" id="stplay" ${hasTake&&!busy?"":"disabled"}>▶ Écouter</button>
-      <button class="btn ${isOk?"on-ok":""}" id="stok" ${busy||!S.takes[v]?"disabled":""}>✓ OK</button>
-      <button class="btn primary" id="stgo" ${busy?"disabled":""}>Suivant →</button>
+      <button class="btn ${i.text_ready?"on-ok":""}" id="sttext" ${busy?"disabled":""}>✓ Texte prêt</button>
+      <button class="btn ${isOk?"on-ok":""}" id="stok" ${busy||!S.takes[v]?"disabled":""}>✓ Audio prêt</button>
     </div>
+    <button class="btn primary wide" id="stgo" ${busy?"disabled":""}>Suivant →</button>
   </div>`;
   const on=(s,f)=>{ const b=el.querySelector(s); if(b) b.onclick=f };
   on("#stclose",closeStudio); on("#stprev",()=>go(-1)); on("#stnext",()=>go(1)); on("#stgo",()=>go(1));
   on("#strec",()=>startRec(v)); on("#ststop",stopRec);
   on("#stplay",e=>playTake(v,e.currentTarget));
   on("#stok",()=>studioSave(i,{status:isOk?"enregistre":"verifie"},false));
+  on("#sttext",()=>studioSave(i,{text_ready:!i.text_ready},false));
   on("#stedbtn",()=>{ ST.edit=true; studioRender(); $("#stedit")?.focus() });
   on("#stcancel",()=>{ ST.edit=false; studioRender() });
   on("#stsave",async()=>{ const t=$("#stedit").value.trim(); const mg=t+(o?" — "+o:"");
@@ -646,7 +692,7 @@ async function studioSave(i,fields,checkBase){
   try{ const r=await api({action:"save",id:i.id,base:checkBase?i.at:"",...fields});
     if(!r.ok){ if(r.error==="conflit"){ Object.assign(i,r.item); ST.edit=false; studioRender(); toast((r.item.by||"Quelqu'un")+" a changé ce texte. Voici sa version."); return false }
       toast("Pas enregistré: "+r.error); return false }
-    Object.assign(i,fields); i.status=r.status; i.at=r.at; i.by=S.who; ST.edit=false; studioRender(); refreshCard(i.id.slice(6)); return true
+    Object.assign(i,fields); i.status=r.status; i.text_ready=r.text_ready; i.at=r.at; i.by=S.who; ST.edit=false; studioRender(); refreshCard(i.id.slice(6)); return true
   }catch(e){ toast("Pas enregistré (réseau): "+e.message); return false } }
 
 // ---------------------------------------------------------------- démarrage
