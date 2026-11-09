@@ -154,6 +154,32 @@ h2{font-size:17px;margin:18px 0 8px}
 .on-ok{background:var(--ok-l);color:var(--ok);border-color:var(--ok)}
 .on-bad{background:var(--bad-l);color:var(--bad);border-color:var(--bad)}
 .btn.wide{width:100%;padding:13px;font-size:17px}
+/* ---- aperçu ---- */
+.pvtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.pvtop select{flex:1;min-width:140px;border:1px solid var(--line);border-radius:8px;padding:7px;background:var(--card)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:var(--card);padding:7px 13px;cursor:pointer}
+.seg button.on{background:var(--brand);color:#fff;font-weight:600}
+.phone{max-width:420px;margin:0 auto;background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 2px 10px rgba(0,0,0,.07);overflow:hidden;touch-action:pan-y}
+.pbar{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:9px 14px;border-bottom:1px solid var(--line)}
+.pbar .nm{font-family:ui-monospace,Menlo,monospace}
+.psec{font-size:12px;font-weight:700;color:var(--brand-d);padding:8px 14px 0;text-transform:uppercase;letter-spacing:.4px}
+.pscr{padding:10px 14px 16px;min-height:300px}
+.pq{margin-bottom:14px}
+.pqt{font-size:17px;line-height:1.45}
+.phint{color:var(--muted);font-size:14px;margin-top:4px}
+.paud{margin:8px 0}
+.pvno{background:var(--bad-l);color:var(--bad)}
+.popt{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:15.5px}
+.popt img{width:48px;height:48px;object-fit:contain;flex:none}
+.prad,.pchk{width:18px;height:18px;border:2px solid var(--muted);flex:none}.prad{border-radius:50%}.pchk{border-radius:4px}
+.pinp{border:1px solid var(--line);border-radius:10px;padding:11px;color:var(--muted);display:flex;justify-content:space-between}
+.pinp.tall{height:64px}
+.pgame{border:2px dashed var(--brand);border-radius:12px;padding:24px 10px;text-align:center}
+.pmeta{font-size:11.5px;color:var(--muted);margin-top:8px;border-top:1px dashed var(--line);padding-top:5px;overflow-wrap:anywhere}
+.pbox{border:2px solid var(--muted);padding:8px;border-radius:6px}.pbig{font-size:1.9em;font-weight:700}.pvar{color:var(--info)}
+img.plab{max-width:100px;display:block;margin:6px 0}
+.pnav{display:flex;justify-content:space-between;align-items:center;max-width:420px;margin:12px auto 0}
 .st-name{margin:4px 0 8px}
 .frbox{margin-top:14px;color:var(--muted);font-size:15px;line-height:1.45;border-left:3px solid var(--line);padding-left:10px}
 .st-meter .st-status{font-size:13px;color:var(--ok);font-weight:600;min-height:0}
@@ -169,7 +195,7 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["audio","🎙 Audios"],["survey","Enquête"],["choice","Choix de réponses"],
+  ["audio","🎙 Audios"],["preview","👁 Aperçu"],["survey","Enquête"],["choice","Choix de réponses"],
   ["curriculum","Guide"],["progress","Avancement"]];
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
 const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
@@ -227,6 +253,7 @@ function shell(){
 async function render(reload){
   const m=$("#main");
   if(S.tab==="progress") return progressView(m);
+  if(S.tab==="preview") return previewView(m);
   if(S.tab==="recent") return recentView(m);
   if(reload || !S.items[S.tab]){
     m.innerHTML=`<div class="loading">Chargement…</div>`;
@@ -694,6 +721,93 @@ async function studioSave(i,fields,checkBase){
       toast("Pas enregistré: "+r.error); return false }
     Object.assign(i,fields); i.status=r.status; i.text_ready=r.text_ready; i.at=r.at; i.by=S.who; ST.edit=false; studioRender(); refreshCard(i.id.slice(6)); return true
   }catch(e){ toast("Pas enregistré (réseau): "+e.message); return false } }
+
+// ================================================================ APERÇU: l'enquête comme la fille la voit
+const PV={layout:null,media:null,idx:0,lang:"mg",built:""};
+function pvFmt(s){
+  // keep the form's simple formatting (b, i, br, div box, span big), escape everything else
+  const T={D:"<div class='pbox'>",d:"</div>",S:"<span class='pbig'>",s:"</span>",B:"<b>",b:"</b>",I:"<i>",i:"</i>",R:"<br>"};
+  let t=String(s||"").replace(/<div[^>]*>/gi,"\u0001D").replace(/<\/div>/gi,"\u0001d")
+    .replace(/<span[^>]*>/gi,"\u0001S").replace(/<\/span>/gi,"\u0001s")
+    .replace(/<b>/gi,"\u0001B").replace(/<\/b>/gi,"\u0001b").replace(/<i>/gi,"\u0001I").replace(/<\/i>/gi,"\u0001i")
+    .replace(/<br\s*\/?>/gi,"\u0001R").replace(/\n/g,"\u0001R");
+  t=esc(t).replace(/\u0001([DdSsBbIiR])/g,(m,k)=>T[k]);
+  // close what the text opened (a broken tag must not break the page)
+  for(const [o,c] of [["<div class='pbox'>","</div>"],["<span class='pbig'>","</span>"],["<b>","</b>"],["<i>","</i>"]]){
+    const n=t.split(o).length-t.split(c).length; if(n>0) t+=c.repeat(n); else if(n<0) t=t.split(c).join("") }
+  return t.replace(/\$\{([a-z0-9_]+)\}/gi,"<span class='pvar'>[$1]</span>") }
+async function previewView(m){
+  m.innerHTML=`<div class="loading">Chargement de l'enquête…</div>`;
+  try{
+    const jobs=[];
+    if(!PV.layout) jobs.push(api({action:"layout"},"miara_preview_api").then(r=>{ if(!r.ok) throw new Error(r.error); PV.layout=r.data; PV.built=r.built_at }));
+    if(!PV.media) jobs.push(api({action:"media"},"miara_preview_api").then(r=>{ PV.media={};
+      for(const [k,v] of Object.entries(r.media||{})) PV.media[k]=`data:${v.mime};base64,${v.data}` }));
+    for(const k of ["survey","choice","audio"]) jobs.push(api({action:"list",kind:k}).then(r=>{ if(r.ok) S.items[k]=r.items }));
+    jobs.push(loadTakes());
+    await Promise.all(jobs);
+  }catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)}</div>`; return }
+  if(!PV.layout?.screens?.length){ m.innerHTML=`<div class="empty">Pas encore d'aperçu. Oscar lance <code>python3 console/build_preview.py</code>.</div>`; return }
+  PV.idx=Math.min(PV.layout.screens.length-1,Math.max(0,parseInt(load("miara_pv_idx"))||0));
+  PV.lang=load("miara_pv_lang")||"mg";
+  pvRender(m);
+}
+function pvText(id,fr,mg){
+  const it=id && ((S.items.survey||[]).find(x=>x.id===id) || (S.items.choice||[]).find(x=>x.id===id));
+  if(it){ fr=it.fr; mg=it.mg }
+  return PV.lang==="mg" ? (mg||fr) : fr }
+function pvAudio(v){
+  if(!v) return "";
+  const a=(S.items.audio||[]).find(x=>x.id==="audio:"+v);
+  if(S.takes[v]) return `<button class="btn small pvplay" data-v="${esc(v)}">▶ Écouter</button>${a&&a.status==="verifie"?` <span class="chip s-verifie">Audio prêt</span>`:""}`;
+  return `<span class="chip pvno">🔇 pas encore enregistré</span>` }
+function pvWidget(w){
+  if(!w) return "";
+  if(w.k==="game") return `<div class="pgame">🎮 Le jeu « ${esc(w.name)} » s'affiche ici</div>`;
+  if(w.k==="num") return `<div class="pinp">123 <span>clavier chiffres</span></div>`;
+  if(w.k==="text") return `<div class="pinp tall">Abc… <span>clavier</span></div>`;
+  if(w.k==="sign") return `<div class="pinp tall">✍ signature</div>`;
+  if(w.k==="select") return w.opts.map(o=>`<div class="popt"><span class="${w.multi?"pchk":"prad"}"></span>
+      ${o.img&&PV.media[o.img]?`<img src="${PV.media[o.img]}" alt="">`:""}<span>${pvFmt(pvText(o.id,o.fr,o.mg))}</span></div>`).join("");
+  return "" }
+function pvRow(r){
+  const meta=[...r.meta]; if(r.revoir) meta.push("🟨 malgache à vérifier");
+  const hint=pvText(r.hid,r.hfr,r.hmg);
+  return `<div class="pq">
+    <div class="pqt">${pvFmt(pvText(r.id,r.fr,r.mg))}</div>
+    ${hint?`<div class="phint">${pvFmt(hint)}</div>`:""}
+    ${r.img&&PV.media[r.img]?`<img class="plab" src="${PV.media[r.img]}" alt="">`:""}
+    <div class="paud">${pvAudio(r.audio)}</div>
+    ${pvWidget(r.w)}
+    ${meta.length?`<div class="pmeta">${meta.map(esc).join(" · ")}</div>`:""}
+  </div>` }
+function pvRender(m){
+  const sc=PV.layout.screens, n=sc.length, s=sc[PV.idx];
+  const secs=[]; sc.forEach((x,k)=>{ if(!secs.length||secs[secs.length-1].fr!==x.sec_fr) secs.push({fr:x.sec_fr,mg:x.sec_mg,k}) });
+  const cur=[...secs].reverse().find(x=>x.k<=PV.idx);
+  m.innerHTML=`<div class="pvtop">
+      <div class="seg"><button data-l="mg" class="${PV.lang==="mg"?"on":""}">Malagasy</button><button data-l="fr" class="${PV.lang==="fr"?"on":""}">Français</button></div>
+      <select id="pvjump" aria-label="Aller à la partie">${secs.map(x=>`<option value="${x.k}" ${x===cur?"selected":""}>${esc(x.fr||"Début")}</option>`).join("")}</select>
+    </div>
+    <div class="phone" id="pvphone">
+      <div class="pbar"><span>${PV.idx+1} / ${n}</span><span class="nm">${esc(s.name)}</span></div>
+      ${s.sec_fr?`<div class="psec">${esc(PV.lang==="mg"?(s.sec_mg||s.sec_fr):s.sec_fr)}</div>`:""}
+      <div class="pscr">${s.note?`<div class="pqt">${esc(s.note)}</div>`:(s.rows||[]).map(pvRow).join("")}</div>
+    </div>
+    <div class="pnav"><button class="round side" id="pvprev" ${PV.idx?"":"disabled"} aria-label="Écran précédent">←</button>
+      <span class="sec">Glissez ou touchez les flèches</span>
+      <button class="round side" id="pvnext" ${PV.idx<n-1?"":"disabled"} aria-label="Écran suivant">→</button></div>
+    <div class="sec" style="text-align:center;margin-top:6px">Structure lue dans l'Excel le ${when(PV.built)} · textes en direct de la console</div>`;
+  const go=d=>{ PV.idx=Math.min(n-1,Math.max(0,PV.idx+d)); store("miara_pv_idx",String(PV.idx)); pvRender(m); window.scrollTo(0,0) };
+  $("#pvprev").onclick=()=>go(-1); $("#pvnext").onclick=()=>go(1);
+  $("#pvjump").onchange=e=>{ PV.idx=+e.target.value; store("miara_pv_idx",String(PV.idx)); pvRender(m) };
+  m.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{ PV.lang=b.dataset.l; store("miara_pv_lang",PV.lang); pvRender(m) });
+  m.querySelectorAll(".pvplay").forEach(b=>b.onclick=()=>playTake(b.dataset.v,b));
+  const ph=$("#pvphone"); let x0=null;
+  ph.addEventListener("touchstart",e=>{ x0=e.touches[0].clientX },{passive:true});
+  ph.addEventListener("touchend",e=>{ if(x0===null) return; const dx=e.changedTouches[0].clientX-x0; x0=null;
+    if(Math.abs(dx)>70) go(dx<0?1:-1) });
+}
 
 // ---------------------------------------------------------------- démarrage
 S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"audio";
