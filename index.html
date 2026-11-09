@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Console MIARA-DIA</title>
+<style>
+:root{
+  --bg:#FBF6F2; --card:#FFFFFF; --ink:#2B2220; --muted:#7A6A64; --line:#EADBD2;
+  --brand:#B45E48; --brand-d:#7D3C30; --brand-l:#FBE6DA;
+  --ok:#2F7D4F; --ok-l:#E2F2E8; --warn:#9A6B00; --warn-l:#FFF3CC; --bad:#B3261E; --bad-l:#FCE4E2;
+  --info:#2F5D8A; --info-l:#E3EEF8; --grey-l:#F1ECE9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1D1816; --card:#2A2321; --ink:#F3ECE8; --muted:#B9AAA3; --line:#463A36;
+    --brand:#E0937B; --brand-d:#F2B8A5; --brand-l:#4A2E26;
+    --ok:#7FD3A0; --ok-l:#1F3A2A; --warn:#F2C95C; --warn-l:#3D3216; --bad:#F2A19B; --bad-l:#4A2422;
+    --info:#9CC3EA; --info-l:#1F3042; --grey-l:#352D2A;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:12px;padding:10px 16px;max-width:1100px;margin:0 auto}
+.logo{font-weight:800;color:var(--brand-d);letter-spacing:.3px}
+.logo small{font-weight:500;color:var(--muted)}
+.who{margin-left:auto;color:var(--muted);font-size:13px;display:flex;gap:8px;align-items:center}
+nav{display:flex;gap:4px;overflow-x:auto;padding:0 12px;max-width:1100px;margin:0 auto}
+nav button{border:0;background:none;padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;color:var(--muted);font-weight:600}
+nav button.on{color:var(--brand-d);border-bottom-color:var(--brand)}
+main{max-width:1100px;margin:0 auto;padding:16px}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--brand)}
+.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.btn.primary:disabled{opacity:.45;cursor:default}
+.btn.small{padding:4px 9px;font-size:13px}
+.link{background:none;border:0;color:var(--brand);cursor:pointer;padding:0;font-size:13px;text-decoration:underline}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.bar select,.bar input{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 9px;max-width:100%}
+.bar input[type=search]{flex:1;min-width:160px}
+.stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:110px}
+.stat b{display:block;font-size:22px;line-height:1.1}
+.stat span{color:var(--muted);font-size:12px}
+.prog{height:10px;background:var(--grey-l);border-radius:6px;overflow:hidden;margin:4px 0 14px}
+.prog i{display:block;height:100%;background:var(--ok)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.card.dirty{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand-l)}
+.ch{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin-bottom:8px;font-size:13px}
+.ref{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--muted);word-break:break-all}
+.sec{color:var(--muted);font-size:12px}
+.meta{margin-left:auto;color:var(--muted);font-size:12px}
+.chip{border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.s-vide,.s-a_enregistrer{background:var(--grey-l);color:var(--muted)}
+.s-a_revoir,.s-a_corriger{background:var(--warn-l);color:var(--warn)}
+.s-brouillon,.s-enregistre{background:var(--info-l);color:var(--info)}
+.s-valide,.s-verifie{background:var(--ok-l);color:var(--ok)}
+.flag{background:var(--warn-l);color:var(--warn);border-radius:8px;padding:6px 9px;font-size:13px;margin-bottom:8px}
+.pend{background:var(--brand-l);color:var(--brand-d)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:720px){.cols{grid-template-columns:1fr}
+  .stat{min-width:0;flex:1 1 28%;padding:6px 8px}.stat b{font-size:17px}.stat span{font-size:11px}
+  main{padding:12px}.card{padding:10px 11px}}
+.lang{font-size:11px;font-weight:700;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;margin-bottom:3px;display:flex;gap:8px;align-items:center}
+.fr{white-space:pre-wrap;background:var(--grey-l);border-radius:8px;padding:8px 10px;min-height:38px}
+textarea{width:100%;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 10px;resize:vertical;min-height:42px}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--brand);outline-offset:0;border-color:transparent}
+textarea.mg{font-size:16px}
+.read{font-size:18px;line-height:1.55}
+.foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.sbtns{display:flex;flex-wrap:wrap;gap:4px}
+.sbtns button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}
+.sbtns button.on{border-color:transparent}
+.note{font-size:13.5px}
+.warn{color:var(--bad);font-size:12.5px}
+.hist{font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);margin-top:8px;padding-top:6px}
+.hist div{margin:3px 0}
+.saveas{font-family:ui-monospace,Menlo,monospace;background:var(--brand-l);color:var(--brand-d);padding:2px 8px;border-radius:6px;font-weight:700}
+.empty{color:var(--muted);text-align:center;padding:30px}
+.login{max-width:380px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px}
+.login h1{margin:0 0 4px;color:var(--brand-d);font-size:22px}
+.login p{color:var(--muted);margin:0 0 16px}
+.login label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+.login input{width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--card)}
+.err{color:var(--bad);margin-top:10px;font-size:14px}
+table{border-collapse:collapse;width:100%;background:var(--card);border-radius:10px;overflow:hidden}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);font-size:14px}
+th{color:var(--muted);font-weight:600;font-size:12.5px}
+td.n{text-align:right;font-variant-numeric:tabular-nums}
+h2{font-size:17px;margin:18px 0 8px}
+.help{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:14px}
+.help summary{cursor:pointer;font-weight:600;color:var(--brand-d)}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:14px;z-index:9;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.loading{color:var(--muted);padding:20px;text-align:center}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<script>
+// Page publique, SANS contenu: tout vient de la base avec le mot de passe de l'équipe.
+const SUPA_URL = "https://sxfbzcnsbcvitaenwpct.supabase.co";
+const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
+
+const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
+const TABS = [
+  ["audio","🎙 Audios"],["survey","Enquête"],["choice","Choix de réponses"],
+  ["curriculum","Guide de l'animatrice"],["progress","Avancement"],["recent","Activité"]];
+const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
+const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
+const LABEL = Object.fromEntries([...ST_TEXT,...ST_AUDIO]);
+const FIELD = {label:"Question / texte", hint:"Aide (hint)", "constraint message":"Message d'erreur", text:"", audio_script_mg:"Audio"};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function store(k,v){ try{ v===undefined ? localStorage.removeItem(k) : localStorage.setItem(k,v) }catch(e){} }
+function load(k){ try{ return localStorage.getItem(k) || "" }catch(e){ return "" } }
+function toast(t){ const el=$("#toast"); el.textContent=t; el.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>el.classList.remove("on"),2600) }
+function when(iso){ if(!iso) return ""; const d=new Date(iso);
+  return d.toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit",timeZone:"Indian/Antananarivo"}) }
+function light(t){ // *italique*, **gras**, {ref:x} → affichage
+  let s=esc(t).replace(/\{ref:[\w-]+\}/g,"…").replace(/\*\*(.+?)\*\*/gs,"<b>$1</b>").replace(/\*(.+?)\*/gs,"<i>$1</i>");
+  return s }
+function vars(t){ return (String(t).match(/\$\{[^}]+\}/g)||[]).sort().join(" ") }
+
+async function api(body){
+  const r = await fetch(SUPA_URL+"/rest/v1/rpc/miara_api",{method:"POST",
+    headers:{apikey:SUPA_KEY,Authorization:"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
+    body:JSON.stringify({body:{...body,key:S.key,who:S.who}})});
+  if(!r.ok) throw new Error("Réseau: "+r.status);
+  return r.json();
+}
+
+// ---------------------------------------------------------------- connexion
+function loginView(msg){
+  $("#app").innerHTML = `<form class="login" id="lf">
+    <h1>Console MIARA-DIA</h1><p>Enquête · guide · audios · avancement</p>
+    <label for="lw">Votre prénom</label><input id="lw" autocomplete="name" required value="${esc(load("miara_who"))}">
+    <label for="lk">Mot de passe de l'équipe</label><input id="lk" type="password" autocomplete="current-password" required>
+    <div style="margin-top:16px"><button class="btn primary" style="width:100%">Entrer</button></div>
+    ${msg?`<div class="err">${esc(msg)}</div>`:""}</form>`;
+  $("#lf").onsubmit = async e => { e.preventDefault();
+    S.who=$("#lw").value.trim(); S.key=$("#lk").value.trim();
+    try{ const r=await api({action:"ping"});
+      if(!r.ok) return loginView("Mot de passe incorrect.");
+      store("miara_who",S.who); store("miara_key",S.key); shell();
+    }catch(err){ loginView("Pas de connexion internet ? "+err.message) } };
+}
+
+function shell(){
+  $("#app").innerHTML = `<header><div class="top"><div class="logo">MIARA-DIA <small>console</small></div>
+    <div class="who">👤 ${esc(S.who)} <button class="link" id="out">changer</button></div></div>
+    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${k===S.tab?"on":""}">${t}</button>`).join("")}</nav></header>
+    <main id="main"></main>`;
+  $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.shown=60; store("miara_tab",S.tab);
+    document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b)); render(true) });
+  render(true);
+}
+
+async function render(reload){
+  const m=$("#main");
+  if(S.tab==="progress") return progressView(m);
+  if(S.tab==="recent") return recentView(m);
+  if(reload || !S.items[S.tab]){
+    m.innerHTML=`<div class="loading">Chargement…</div>`;
+    try{ const r=await api({action:"list",kind:S.tab});
+      if(!r.ok){ if(r.error==="mot_de_passe") return loginView("Le mot de passe a changé."); throw new Error(r.error) }
+      S.items[S.tab]=r.items;
+      r.items.forEach(i=>{ if(i.assignee) S.people.add(i.assignee); if(i.by) S.people.add(i.by) });
+    }catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)} <button class="btn small" onclick="render(true)">Réessayer</button></div>`; return }
+  }
+  listView(m);
+}
+
+// ---------------------------------------------------------------- listes
+const HELP = {
+  audio:`<b>Ce soir: enregistrer les audios.</b> Les filles écoutent ces clips dans leurs écouteurs.
+   <ol style="margin:6px 0 0 18px;padding:0">
+   <li>Pièce calme. Téléphone à 20 cm de la bouche. Lisez lentement, comme pour une fille de 12 ans.</li>
+   <li>Lisez <b>seulement le malgache</b>. Ne lisez pas ce qui est entre [crochets]. Après « — », lisez les réponses avec une petite pause.</li>
+   <li>Nommez le fichier <b>exactement</b> comme indiqué (ex. <span class="saveas">gad1.m4a</span>).</li>
+   <li>Mettez votre prénom dans « Qui enregistre », puis cliquez <b>Enregistré</b>.</li>
+   <li>Un mot à corriger ? Corrigez le texte malgache et écrivez-le dans « Corrections ». Les lignes jaunes (REVOIR) sont à vérifier en priorité.</li></ol>`,
+  survey:`Le malgache est la langue de l'enquête. Corrigez le texte malgache, puis cliquez <b>Enregistrer</b>.
+   Quand une ligne est bonne, cliquez <b>Validé</b>. Ne changez jamais ce qui est entre <code>\${…}</code>. Les lignes jaunes (REVOIR) sont à vérifier en priorité.
+   Oscar met ensuite les changements dans le formulaire SurveyCTO.`,
+  choice:`Ce sont les réponses possibles (Oui/Non, échelles…). Même règle: corrigez le malgache, puis <b>Validé</b>.`,
+  curriculum:`Le guide de l'animatrice, bloc par bloc. Écrivez la traduction malgache à droite. Vous pouvez aussi proposer un changement du français.
+   <code>*mot*</code> = italique, <code>**mot**</code> = gras, <code>{ref:…}</code> = numéro de page (à garder).`};
+
+function filtered(){
+  const f=S.filters[S.tab]||{}, q=(f.q||"").toLowerCase();
+  return (S.items[S.tab]||[]).filter(i=>
+    (!f.sec||i.section===f.sec) && (!f.st||i.status===f.st) &&
+    (!f.mine||i.assignee===S.who) && (!f.flag||i.flag) && (!f.pend||i.pending) &&
+    (!q || (i.fr+" "+i.mg+" "+i.ref+" "+i.note+" "+i.assignee).toLowerCase().includes(q)));
+}
+
+function listView(m){
+  const all=S.items[S.tab]||[], audio=S.tab==="audio", f=S.filters[S.tab]=S.filters[S.tab]||{};
+  const sts= audio?ST_AUDIO:ST_TEXT, secs=[...new Set(all.map(i=>i.section))];
+  const list=filtered();
+  m.innerHTML = `<details class="help" ${load("miara_help_"+S.tab)==="closed"?"":"open"}><summary>Comment faire</summary><div style="margin-top:6px">${HELP[S.tab]}</div></details>
+   <div id="stats">${statsHtml()}</div>
+   <div class="bar">
+     <select id="fsec"><option value="">Toutes les parties</option>${secs.map(s=>`<option ${f.sec===s?"selected":""}>${esc(s)}</option>`).join("")}</select>
+     <select id="fst"><option value="">Tous les statuts</option>${sts.map(([k,t])=>`<option value="${k}" ${f.st===k?"selected":""}>${t}</option>`).join("")}</select>
+     <input type="search" id="fq" placeholder="Chercher…" value="${esc(f.q||"")}">
+     ${audio?`<label><input type="checkbox" id="fmine" ${f.mine?"checked":""}> les miens</label>`:""}
+     <label><input type="checkbox" id="fflag" ${f.flag?"checked":""}> REVOIR</label>
+     ${audio?"":`<label><input type="checkbox" id="fpend" ${f.pend?"checked":""}> modifiés</label>`}
+     <button class="btn small" id="rel">↻ Actualiser</button>
+   </div>
+   <div class="sec" style="margin-bottom:6px">${list.length} ligne(s)</div>
+   <div id="cards">${list.slice(0,S.shown).map(card).join("") || `<div class="empty">Rien à afficher.</div>`}</div>
+   ${list.length>S.shown?`<div style="text-align:center"><button class="btn" id="more">Voir plus (${list.length-S.shown})</button></div>`:""}
+   <datalist id="people">${[...S.people].map(p=>`<option value="${esc(p)}">`).join("")}</datalist>`;
+  m.querySelector("details").ontoggle=e=>store("miara_help_"+S.tab,e.target.open?"open":"closed");
+  const upd=()=>{ Object.assign(f,{sec:$("#fsec").value,st:$("#fst").value,q:$("#fq").value,
+      mine:$("#fmine")?.checked,flag:$("#fflag").checked,pend:$("#fpend")?.checked}); S.shown=60; listView(m);
+      const q=$("#fq"); q.focus(); q.setSelectionRange(q.value.length,q.value.length) };
+  ["#fsec","#fst","#fmine","#fflag","#fpend"].forEach(s=>{ const el=$(s); if(el) el.onchange=upd });
+  let t; $("#fq").oninput=()=>{ clearTimeout(t); t=setTimeout(upd,300) };
+  $("#rel").onclick=()=>render(true);
+  if($("#more")) $("#more").onclick=()=>{ S.shown+=60; listView(m) };
+  wire(m);
+}
+
+function statsHtml(){
+  const all=S.items[S.tab]||[], audio=S.tab==="audio", sts=audio?ST_AUDIO:ST_TEXT;
+  const cnt=k=>all.filter(i=>i.status===k).length;
+  const done= audio ? cnt("enregistre")+cnt("verifie") : cnt("valide");
+  const pct= all.length? Math.round(100*done/all.length):0;
+  return `<div class="stats">
+     <div class="stat"><b>${done} / ${all.length}</b><span>${audio?"enregistrés":"validés"}</span></div>
+     ${sts.map(([k,t])=>`<div class="stat"><b>${cnt(k)}</b><span>${t}</span></div>`).join("")}
+     ${audio?"":`<div class="stat"><b>${all.filter(i=>i.pending).length}</b><span>pas encore dans le fichier</span></div>`}
+   </div><div class="prog"><i style="width:${pct}%"></i></div>`;
+}
+
+function card(i){
+  const audio=S.tab==="audio", cur=S.tab==="curriculum", sts=audio?ST_AUDIO:ST_TEXT;
+  const varname = audio ? i.id.replace(/^audio:/,"") : "";
+  const frEdit = !audio;
+  return `<div class="card" data-id="${esc(i.id)}">
+    <div class="ch">
+      <span class="chip s-${i.status}">${LABEL[i.status]||i.status}</span>
+      ${audio?`<span>Enregistrer sous <span class="saveas">${esc(varname)}.m4a</span></span>`:`<span class="ref">${esc(i.ref)}</span>`}
+      ${FIELD[i.field]&&!audio?`<span class="sec">${FIELD[i.field]}</span>`:""}
+      ${i.pending&&!audio?`<span class="chip pend" title="Changé dans la console, pas encore dans le fichier">modifié</span>`:""}
+      <span class="sec">${esc(i.section)}</span>
+      <span class="meta">${i.by?esc(i.by)+" · "+when(i.at):""}</span>
+    </div>
+    ${i.flag?`<div class="flag">⚠ ${esc(i.flag)}</div>`:""}
+    <div class="cols">
+      <div>
+        <div class="lang">Malagasy ${audio?"— texte à lire":""}</div>
+        <textarea class="mg ${audio?"read":""}" data-f="mg" rows="${Math.min(12,Math.max(2,Math.ceil((i.mg||"").length/(audio?45:60))))}">${esc(i.mg)}</textarea>
+        <div class="warn" data-w></div>
+      </div>
+      <div>
+        <div class="lang">Français ${frEdit?`<button class="link" data-act="editfr">modifier</button>`:"(pour nous)"}</div>
+        <div class="fr" data-frshow>${cur?light(i.fr):esc(i.fr)}</div>
+        <textarea data-f="fr" hidden rows="${Math.min(12,Math.max(2,Math.ceil((i.fr||"").length/60)))}">${esc(i.fr)}</textarea>
+      </div>
+    </div>
+    <div class="foot">
+      ${audio?`<label class="note">Qui enregistre <input data-f="assignee" list="people" value="${esc(i.assignee)}" style="border:1px solid var(--line);border-radius:8px;padding:5px 8px;width:130px;background:var(--card)"></label>
+        ${!i.assignee?`<button class="btn small" data-act="me">C'est moi</button>`:""}`:""}
+      <div class="sbtns">${sts.map(([k,t])=>`<button data-st="${k}" class="${i.status===k?"on s-"+k:""}">${t}</button>`).join("")}</div>
+      <button class="btn primary small" data-act="save" disabled>Enregistrer</button>
+      <button class="link" data-act="hist">historique</button>
+    </div>
+    <textarea class="note" data-f="note" rows="1" placeholder="${audio?"Corrections / mots changés…":"Commentaire…"}" style="margin-top:8px">${esc(i.note)}</textarea>
+    <div class="hist" hidden></div>
+  </div>`;
+}
+
+function item(id){ return (S.items[S.tab]||[]).find(i=>i.id===id) }
+
+function wire(m){
+  m.querySelectorAll(".card").forEach(c=>{
+    const i=item(c.dataset.id), save=c.querySelector('[data-act="save"]');
+    const dirty=()=>{ const d=[...c.querySelectorAll("[data-f]")].some(el=>el.value!==(i[el.dataset.f]||""));
+      save.disabled=!d; c.classList.toggle("dirty",d);
+      const w=c.querySelector("[data-w]"); const mg=c.querySelector('[data-f="mg"]').value, fr=c.querySelector('[data-f="fr"]').value;
+      w.textContent = (S.tab==="survey"||S.tab==="choice") && vars(fr)!==vars(mg) && mg.trim() ? "Attention: les ${…} ne sont pas les mêmes qu'en français ("+(vars(fr)||"aucun")+")." : "" };
+    c.querySelectorAll("[data-f]").forEach(el=>{ el.oninput=dirty;
+      el.onkeydown=e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){ e.preventDefault(); if(!save.disabled) doSave(c,{}) } } });
+    save.onclick=()=>doSave(c,{});
+    c.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>doSave(c,{status:b.dataset.st}));
+    const ef=c.querySelector('[data-act="editfr"]');
+    if(ef) ef.onclick=()=>{ c.querySelector("[data-frshow]").hidden=true; const t=c.querySelector('[data-f="fr"]'); t.hidden=false; t.focus(); ef.remove() };
+    const me=c.querySelector('[data-act="me"]');
+    if(me) me.onclick=()=>{ c.querySelector('[data-f="assignee"]').value=S.who; doSave(c,{}) };
+    c.querySelector('[data-act="hist"]').onclick=()=>showHist(c,i);
+  });
+}
+
+async function doSave(c,extra){
+  const i=item(c.dataset.id), body={action:"save",id:i.id,base:i.at};
+  c.querySelectorAll("[data-f]").forEach(el=>{ if(el.value!==(i[el.dataset.f]||"")) body[el.dataset.f]=el.value });
+  Object.assign(body,extra);
+  if(S.tab==="audio" && extra.status && ["enregistre","verifie"].includes(extra.status) && !c.querySelector('[data-f="assignee"]').value.trim()){
+    body.assignee=S.who; }
+  c.style.opacity=.6;
+  try{
+    const r=await api(body);
+    if(!r.ok && r.error==="conflit"){
+      c.style.opacity=1;
+      const o=r.item;
+      if(confirm(`${o.by} a modifié cette ligne à ${when(o.at)}.\n\nSa version (malgache):\n${o.mg.slice(0,400)}\n\nOK = garder MA version (écrase la sienne)\nAnnuler = prendre SA version`)){
+        i.at=o.at; return doSave(c,extra) }
+      Object.assign(i,o); c.outerHTML=card(i); wire($("#main")); return;
+    }
+    if(!r.ok) throw new Error(r.error);
+    for(const k of ["fr","mg","note","assignee"]) if(k in body) i[k]=body[k];
+    i.status=r.status; i.at=r.at; i.by=S.who; i.pending=r.pending;
+    if(i.assignee) S.people.add(i.assignee);
+    const tmp=document.createElement("div"); tmp.innerHTML=card(i); const n=tmp.firstElementChild;
+    c.replaceWith(n); wire({querySelectorAll:s=>s===".card"?[n]:[]});
+    const st=$("#stats"); if(st) st.innerHTML=statsHtml();
+    toast("Enregistré ✓");
+  }catch(e){ c.style.opacity=1; toast("Pas enregistré: "+e.message) }
+}
+
+async function showHist(c,i){
+  const h=c.querySelector(".hist");
+  if(!h.hidden){ h.hidden=true; return }
+  h.hidden=false; h.textContent="…";
+  const r=await api({action:"history",id:i.id});
+  h.innerHTML = (r.history||[]).map(x=>{
+    const ch=["mg","fr","status","assignee","note"].filter(k=>(x.old[k]??"")!==(x.new[k]??""));
+    return `<div><b>${esc(x.who)}</b> · ${when(x.at)} — ${ch.map(k=>k==="status"?`statut → ${LABEL[x.new.status]||x.new.status}`
+      : `${k}: <s>${esc(String(x.old[k]??"").slice(0,120))}</s> → ${esc(String(x.new[k]??"").slice(0,160))}`).join(" · ")||"(rien)"}</div>` }).join("")
+    || "Pas encore de changement dans la console.";
+}
+
+// ---------------------------------------------------------------- avancement
+async function progressView(m){
+  m.innerHTML=`<div class="loading">Chargement…</div>`;
+  const [p,...kinds]=await Promise.all([api({action:"progress"}),
+    ...["audio","survey","choice","curriculum"].map(k=>S.items[k]?Promise.resolve({items:S.items[k]}):api({action:"list",kind:k}))]);
+  ["audio","survey","choice","curriculum"].forEach((k,n)=>S.items[k]=kinds[n].items||[]);
+  const row=(name,k,doneSt)=>{ const a=S.items[k], d=a.filter(i=>doneSt.includes(i.status)).length;
+    return `<tr><td>${name}</td><td class="n">${d} / ${a.length}</td><td style="width:40%"><div class="prog" style="margin:0"><i style="width:${a.length?100*d/a.length:0}%"></i></div></td></tr>` };
+  const d=p.data;
+  let field=`<div class="empty">Pas encore de données de terrain.<br>Oscar lance <code>python3 console/sync_progress.py</code> pour les mettre à jour.</div>`;
+  if(d && d.total!==undefined){
+    field=`<div class="stats">
+      <div class="stat"><b>${d.real}</b><span>enquêtes reçues</span></div>
+      ${d.target?`<div class="stat"><b>${Math.round(100*d.real/d.target)}%</b><span>de l'objectif (${d.target})</span></div>`:""}
+      <div class="stat"><b>${d.consent_yes??"–"}</b><span>filles qui ont accepté</span></div>
+      <div class="stat"><b>${d.today??0}</b><span>aujourd'hui</span></div>
+      <div class="stat"><b>${d.test}</b><span>tests (TEST01/02)</span></div></div>
+      <h2>Par école</h2><table><tr><th>École</th><th class="n">Enquêtes</th><th class="n">Acceptées</th><th>Dernière</th></tr>
+      ${(d.by_school||[]).map(s=>`<tr><td>${esc(s.school)}</td><td class="n">${s.n}</td><td class="n">${s.consent_yes??"–"}</td><td>${when(s.last)}</td></tr>`).join("")}</table>
+      <h2>Par jour</h2><table><tr><th>Jour</th><th class="n">Enquêtes</th></tr>
+      ${(d.by_day||[]).map(s=>`<tr><td>${esc(s.day)}</td><td class="n">${s.n}</td></tr>`).join("")}</table>`;
+  }
+  m.innerHTML=`<h2 style="margin-top:0">Terrain (SurveyCTO)</h2>
+    <div class="sec" style="margin-bottom:8px">Dernière mise à jour: ${p.synced_at?when(p.synced_at):"jamais"}</div>${field}
+    <h2>Préparation</h2><table>
+    ${row("Audios enregistrés","audio",["enregistre","verifie"])}
+    ${row("Audios vérifiés","audio",["verifie"])}
+    ${row("Enquête: lignes validées","survey",["valide"])}
+    ${row("Choix de réponses validés","choice",["valide"])}
+    ${row("Guide: blocs traduits","curriculum",["brouillon","valide"])}
+    ${row("Guide: blocs validés","curriculum",["valide"])}</table>
+    <h2>Audios par personne</h2><table><tr><th>Qui</th><th class="n">Assignés</th><th class="n">Enregistrés</th></tr>
+    ${Object.entries(S.items.audio.reduce((a,i)=>{ const k=i.assignee||"(personne)"; a[k]=a[k]||[0,0]; a[k][0]++; if(["enregistre","verifie"].includes(i.status)) a[k][1]++; return a },{}))
+      .map(([k,[n,dn]])=>`<tr><td>${esc(k)}</td><td class="n">${n}</td><td class="n">${dn}</td></tr>`).join("")}</table>`;
+}
+
+async function recentView(m){
+  m.innerHTML=`<div class="loading">Chargement…</div>`;
+  const r=await api({action:"recent"});
+  const TN={audio:"Audio",survey:"Enquête",choice:"Choix",curriculum:"Guide"};
+  m.innerHTML=`<h2 style="margin-top:0">Derniers changements</h2>`+((r.recent||[]).map(x=>{
+    const ch=["mg","fr","status","assignee","note"].filter(k=>(x.old[k]??"")!==(x.new[k]??""));
+    return `<div class="card"><div class="ch"><b>${esc(x.who)}</b><span class="sec">${when(x.at)}</span><span class="chip s-${x.new.status}">${TN[x.kind]||""}</span><span class="ref">${esc(x.ref||x.id)}</span></div>
+      <div style="font-size:13.5px">${ch.map(k=>k==="status"?`Statut → <b>${LABEL[x.new.status]||x.new.status}</b>`:`<b>${k}</b>: ${esc(String(x.new[k]??"").slice(0,220))}`).join("<br>")}</div></div>` }).join("")
+    || `<div class="empty">Rien pour l'instant.</div>`);
+}
+
+// ---------------------------------------------------------------- démarrage
+S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"audio";
+if(!TABS.some(t=>t[0]===S.tab)) S.tab="audio";
+if(S.who && S.key){ api({action:"ping"}).then(r=>r.ok?shell():loginView()).catch(()=>loginView("Pas de connexion internet ?")) }
+else loginView();
+</script>
+</body>
+</html>
