@@ -115,6 +115,24 @@ h2{font-size:17px;margin:18px 0 8px}
 .mbar.a i{background:var(--info)}
 .gcards{padding:10px}
 .gcards .card{margin-bottom:8px}
+/* ---- jeux ---- */
+.gchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.gchips .btn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.gwrap{display:grid;grid-template-columns:1fr;gap:16px}
+.gwrap .card{margin-bottom:8px}
+.gplay{display:none}
+.gplay.open{display:flex;flex-direction:column;position:fixed;inset:0;z-index:20;background:var(--bg);padding:8px;height:100dvh}
+.gplay .gbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.gplay .gbar .sec{flex:1}
+.phone{flex:1;width:100%;max-width:420px;margin:0 auto;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff}
+.phone iframe{border:0;width:100%;height:100%;display:block}
+.gplaybtn{width:100%;padding:12px;font-size:16px;margin-bottom:12px}
+@media (min-width:980px){
+  .gwrap{grid-template-columns:minmax(0,1fr) 380px}
+  .gplay,.gplay.open{display:flex;flex-direction:column;position:sticky;top:12px;height:calc(100dvh - 140px);padding:0;z-index:auto;inset:auto}
+  .gplay .gclose,.gplaybtn{display:none}
+  .phone{max-width:none}
+}
 /* ---- enregistrement (studio), téléphone d'abord ---- */
 .noscroll{overflow:hidden}
 .bigstart{width:100%;padding:13px;font-size:16px;margin-bottom:12px}
@@ -195,7 +213,7 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["preview","👁 Aperçu"],["progress","Avancement"]];
+  ["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["progress","Avancement"]];
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
 const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
 const LABEL = Object.fromEntries([...ST_TEXT,...ST_AUDIO]);
@@ -263,7 +281,7 @@ async function render(reload){
       if(S.tab==="audio") await loadTakes();
     }catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)} <button class="btn small" onclick="render(true)">Réessayer</button></div>`; return }
   }
-  listView(m);
+  S.tab==="game" ? gameView(m) : listView(m);
 }
 
 // ---------------------------------------------------------------- listes
@@ -273,6 +291,9 @@ const HELP = {
    Lisez seulement le malgache (pas les [crochets]). Après « — », lisez aussi les réponses.`,
   survey:`Relisez le malgache. Corrigez si besoin, puis <b>✓ Texte prêt</b>. Ne changez pas <code>\${…}</code>.`,
   choice:`Les réponses (Oui / Non, échelles…). Elles s'affichent en boutons et sont lues à la fin des clips, après « — ». Corrigez le malgache ici une seule fois, puis <b>✓ Texte prêt</b>.`,
+  game:`Corrigez le malgache, puis <b>✓ Texte prêt</b>. Jouez à droite (sur téléphone: <b>▶ Jouer</b>) pour voir vos textes dans le jeu, même pas encore sauvegardés.<br>
+   Gardez <code>{n} {total} {i} {len} {side}</code> tels quels (ils deviennent des nombres ou des mots). Gardez les paires <code>&lt;b&gt;…&lt;/b&gt;</code> (gras).
+   Le titre des images Raven est dessiné dans les images: gardez-le court. Il change seulement après la mise à jour par Oscar.`,
   curriculum:`Écrivez le malgache, puis <b>✓ Texte prêt</b>. <code>*mot*</code> = italique, <code>**mot**</code> = gras.`};
 const SHORT = {vide:"À traduire",brouillon:"À relire",a_revoir:"À relire",valide:"Texte prêt",
   a_enregistrer:"À enregistrer",a_corriger:"À refaire",enregistre:"Enregistré",verifie:"Audio prêt"};
@@ -286,7 +307,7 @@ function filtered(){
   const f=S.filters[S.tab]||{}, q=(f.q||"").toLowerCase();
   const show = { "":()=>true, rec:i=>!isRecorded(i), text:i=>!textOk(i),
                  audio:i=>isRecorded(i)&&!audioOk(i), ready:allOk, todo:i=>!allOk(i) }[f.show||""] || (()=>true);
-  return (S.items[S.tab]||[]).filter(i=> show(i) && (!q || (i.fr+" "+i.mg+" "+i.ref).toLowerCase().includes(q)));
+  return (S.items[S.tab]||[]).filter(i=> show(i) && (S.tab!=="game" || i.id.split(":")[1]===GM.g) && (!q || (i.fr+" "+i.mg+" "+i.ref).toLowerCase().includes(q)));
 }
 
 function counts(list){
@@ -337,7 +358,7 @@ function listView(m){
 }
 
 function statsHtml(){
-  const all=S.items[S.tab]||[], c=counts(all), audio=S.tab==="audio";
+  const all=(S.items[S.tab]||[]).filter(i=>S.tab!=="game"||i.id.split(":")[1]===GM.g), c=counts(all), audio=S.tab==="audio";
   return `<div class="sum"><span><b>${c.t}</b>/${c.n} textes prêts</span>
     ${audio?`<span><b>${c.r}</b>/${c.n} enregistrés</span><span><b>${c.a}</b>/${c.n} audios prêts</span>`:""}</div>`;
 }
@@ -395,7 +416,9 @@ function wire(m){
     const dirty=()=>{ const d=[...c.querySelectorAll("[data-f]")].some(el=>fval(el)!==(i[el.dataset.f]||""));
       save.hidden=!d; c.classList.toggle("dirty",d);
       const w=c.querySelector("[data-w]"); const mg=c.querySelector('[data-f="mg"]').value, fr=c.querySelector('[data-f="fr"]').value;
-      w.textContent = (S.tab==="survey"||S.tab==="choice") && vars(fr)!==vars(mg) && mg.trim() ? "Attention: les ${…} ne sont pas les mêmes qu'en français ("+(vars(fr)||"aucun")+")." : "" };
+      w.textContent = S.tab==="game" ? gameWarn(fr,mg)
+        : (S.tab==="survey"||S.tab==="choice") && vars(fr)!==vars(mg) && mg.trim() ? "Attention: les ${…} ne sont pas les mêmes qu'en français ("+(vars(fr)||"aucun")+")." : "" };
+    if(S.tab==="game") dirty();
     c.querySelectorAll("[data-f]").forEach(el=>{ el.oninput=dirty;
       el.onkeydown=e=>{ if((e.metaKey||e.ctrlKey)&&e.key==="Enter"){ e.preventDefault(); if(!save.disabled) doSave(c,{}) } } });
     save.onclick=()=>doSave(c,{});
@@ -454,12 +477,69 @@ async function showHist(c,i){
     || "Pas encore de changement dans la console.";
 }
 
+// ---------------------------------------------------------------- jeux
+// Pages des jeux: dans la base (derrière le mot de passe), jamais sur GitHub Pages.
+const GM = { g: load("miara_game") || "flanker", html:{} };
+const GAMES = [["flanker","Flèches"],["corsi","Carrés"],["magnitud","Nombres"],["raven","Images"]];
+const PH = t => (String(t).match(/\{[a-z]+\}/g)||[]).sort().join(" ");
+function gameWarn(fr,mg){
+  if(!mg.trim()) return "Vide: le jeu montrera le texte d'origine.";
+  const out=[];
+  if(PH(fr)!==PH(mg)) out.push("Gardez exactement: "+(PH(fr)||"aucun {…}")+(PH(mg)?" (vous avez: "+PH(mg)+")":""));
+  const o=(mg.match(/<b>/g)||[]).length, c=(mg.match(/<\/b>/g)||[]).length;
+  if(o!==c) out.push("<b> et </b> ne vont pas par paires.");
+  return out.join(" · ");
+}
+function gameTexts(){
+  const t={};
+  (S.items.game||[]).filter(i=>i.id.split(":")[1]===GM.g).forEach(i=>{ t[i.id.split(":")[2]]=i.mg });
+  document.querySelectorAll("#gcards .card").forEach(c=>{      // aussi le texte pas encore sauvegardé
+    const k=c.dataset.id.split(":")[2], v=c.querySelector('[data-f="mg"]').value; t[k]=v });
+  for(const k in t) if(!String(t[k]).trim()) delete t[k];      // vide → texte d'origine du jeu
+  return t;
+}
+async function gamePlay(){
+  const f=$("#gframe"), msg=$("#gmsg"); if(!f) return;
+  try{
+    if(!GM.html[GM.g]){ msg.textContent="Chargement du jeu…";
+      const r=await api({action:"game",name:GM.g},"miara_preview_api");
+      if(!r.ok) throw new Error(r.error==="jeu_absent"?"jeu pas encore dans la console":r.error);
+      GM.html[GM.g]=r.html }
+    const js=JSON.stringify(gameTexts()).replace(/</g,"\\u003c");
+    f.srcdoc=GM.html[GM.g].replace("/*__GAME_TXT__*/null",()=>js);
+    msg.textContent="Avec vos textes";
+  }catch(e){ msg.textContent="Erreur: "+e.message }
+}
+function gameView(m){
+  const list=filtered(), name=(GAMES.find(x=>x[0]===GM.g)||[])[1];
+  m.innerHTML=`
+    <div class="gchips">${GAMES.map(([k,t])=>`<button class="btn ${k===GM.g?"on":""}" data-g="${k}">${t}</button>`).join("")}</div>
+    <div id="stats">${statsHtml()}</div>
+    <div class="help">${HELP.game}</div>
+    <button class="btn primary gplaybtn" id="gopen">▶ Jouer avec ces textes</button>
+    <div class="gwrap">
+      <div id="gcards">${list.map(card).join("")||`<div class="empty">Rien ici.</div>`}</div>
+      <div class="gplay" id="gplay">
+        <div class="gbar"><span class="sec" id="gmsg"></span>
+          <button class="btn" id="greplay">↻ Rejouer</button><button class="btn gclose" id="gclose">✕ Fermer</button></div>
+        <div class="phone"><iframe id="gframe" title="Jeu ${esc(name)}" sandbox="allow-scripts"></iframe></div>
+      </div>
+    </div>`;
+  m.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{ GM.g=b.dataset.g; store("miara_game",GM.g); gameView(m) });
+  const pl=$("#gplay");
+  $("#gopen").onclick=()=>{ pl.classList.add("open"); document.body.classList.add("noscroll"); gamePlay() };
+  $("#gclose").onclick=()=>{ pl.classList.remove("open"); document.body.classList.remove("noscroll") };
+  $("#greplay").onclick=gamePlay;
+  wire(m);
+  if(matchMedia("(min-width:980px)").matches) gamePlay();
+}
+
 // ---------------------------------------------------------------- avancement
 async function progressView(m){
   m.innerHTML=`<div class="loading">Chargement…</div>`;
   const [p,...kinds]=await Promise.all([api({action:"progress"}),
-    ...["audio","choice"].map(k=>S.items[k]?Promise.resolve({items:S.items[k]}):api({action:"list",kind:k}))]);
-  ["audio","choice"].forEach((k,n)=>S.items[k]=kinds[n].items||[]);
+    ...["audio","choice","game"].map(k=>S.items[k]?Promise.resolve({items:S.items[k]}):api({action:"list",kind:k}))]);
+  ["audio","choice","game"].forEach((k,n)=>S.items[k]=kinds[n].items||[]);
   const row=(name,k,doneSt)=>{ const a=S.items[k], d=a.filter(i=>doneSt==="text"?i.text_ready:doneSt.includes(i.status)).length;
     return `<tr><td>${name}</td><td class="n">${d} / ${a.length}</td><td style="width:40%"><div class="prog" style="margin:0"><i style="width:${a.length?100*d/a.length:0}%"></i></div></td></tr>` };
   const d=p.data;
@@ -483,6 +563,7 @@ async function progressView(m){
     ${row("Audio enquête · enregistrés","audio",["enregistre","verifie"])}
     ${row("Audio enquête · audio prêt","audio",["verifie"])}
     ${row("Choix de réponses · texte prêt","choice",["valide"])}
+    ${row("Jeux · texte prêt","game",["valide"])}
 </table>
 `;
 }
