@@ -115,6 +115,22 @@ h2{font-size:17px;margin:18px 0 8px}
 .mbar.a i{background:var(--info)}
 .gcards{padding:10px}
 .gcards .card{margin-bottom:8px}
+/* ---- problèmes ---- */
+.nbadge{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font-size:11.5px;line-height:18px;text-align:center}
+.nbadge[hidden]{display:none}
+.sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheetbox{background:var(--bg);width:100%;max-width:560px;max-height:92dvh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;overflow:hidden}
+@media (min-width:600px){.sheet{align-items:center}.sheetbox{border-radius:16px}}
+.sheetbody{padding:12px 14px 18px;overflow-y:auto}
+.sheetbody textarea,.sheetbody input[type=search]{width:100%;box-sizing:border-box;margin-top:8px}
+.tchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.tchip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:18px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
+.tchip[aria-pressed="true"]{background:var(--warn-l);border-color:var(--warn);color:var(--warn);font-weight:700}
+.itgt{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-top:6px}
+.ires{max-height:38dvh;overflow-y:auto;margin:6px 0}
+.ihit{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:6px;font:inherit;color:var(--ink);cursor:pointer}
+.ipic img{max-width:100%;border-radius:8px;margin:6px 0}
+.ifix{color:var(--ok);font-weight:600;margin-top:6px}
 /* ---- jeux ---- */
 .gchips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .gchips .btn.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -213,7 +229,7 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["progress","Avancement"]];
+  ["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
 const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
 const LABEL = Object.fromEntries([...ST_TEXT,...ST_AUDIO]);
@@ -259,18 +275,19 @@ function loginView(msg){
 function shell(){
   $("#app").innerHTML = `<header><div class="top"><div class="logo">MIARA-DIA <small>console</small></div>
     <div class="who"><span id="qbadge"></span>👤 ${esc(S.who)} <button class="link" id="out">changer</button></div></div>
-    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${k===S.tab?"on":""}">${t}</button>`).join("")}</nav></header>
+    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${k===S.tab?"on":""}">${t}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
     <main id="main"></main>`;
   $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.shown=60; store("miara_tab",S.tab);
     document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b)); render(true) });
-  render(true); Q.badge();
+  render(true); Q.badge(); isLoad().catch(()=>{});
 }
 
 async function render(reload){
   const m=$("#main");
   if(S.tab==="progress") return progressView(m);
   if(S.tab==="preview") return previewView(m);
+  if(S.tab==="issues") return issuesView(m);
   if(S.tab==="recent") return recentView(m);
   if(reload || !S.items[S.tab]){
     m.innerHTML=`<div class="loading">Chargement…</div>`;
@@ -399,6 +416,7 @@ function card(i){
       <button class="btn primary" data-act="save" hidden>Sauvegarder</button>
       ${audio?`<button class="btn" data-act="studio">● Enregistrer</button>
         <button class="btn" data-act="play" ${has?"":"disabled"}>▶</button>`:""}
+      <button class="btn" data-act="report" title="Signaler un problème" aria-label="Signaler un problème">⚠</button>
       <span class="okbtns">
         ${audio?`<button class="btn okbtn ${tOk?"on-ok":""}" data-tr="${tOk?0:1}">✓ Texte prêt</button>
           <button class="btn okbtn ${aOk?"on-ok":""}" data-st="${aOk?"enregistre":"verifie"}" ${!has&&!aOk?"disabled title='Enregistrez d’abord'":""}>✓ Audio prêt</button>`
@@ -430,6 +448,8 @@ function wire(m){
     if(me) me.onclick=()=>{ c.querySelector('[data-f="assignee"]').value=S.who; doSave(c,{}) };
     const sb=c.querySelector('[data-act="studio"]');
     if(sb) sb.onclick=()=>openStudio(i.id);
+    const rb=c.querySelector('[data-act="report"]');
+    if(rb) rb.onclick=()=>isForm(isTargetOfItem(i));
     const pb=c.querySelector('[data-act="play"]');
     if(pb) pb.onclick=()=>playTake(i.id.replace(/^audio:/,""),pb);
   });
@@ -533,6 +553,164 @@ function gameView(m){
   wire(m);
   if(matchMedia("(min-width:980px)").matches) gamePlay();
 }
+
+// ---------------------------------------------------------------- problèmes
+// « ⚠ Signaler »: l'équipe dit « cette question ne va pas » (texte, audio, réponses…), Oscar corrige.
+const IS = { list:null, idx:null, open:new Set() };
+const ITYPES = [["texte","Texte faux"],["audio","Audio faux"],["reponses","Réponses fausses"],
+  ["image","Image fausse"],["moment","Apparaît au mauvais moment"],["autre","Autre"]];
+const IPLACE = {screen:"Écran",audio:"Audio",choice:"Réponse",game:"Jeu",libre:"Général"};
+const iapi = body => api(body,"miara_issue_api");
+const norm = s => String(s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/<[^>]+>/g," ");
+const short = (s,n=90) => { s=String(s||"").replace(/<[^>]+>/g,"").replace(/\s+/g," ").trim(); return s.length>n?s.slice(0,n)+"…":s };
+
+async function isLoad(){
+  const r=await iapi({action:"list"});
+  if(!r.ok) throw new Error(r.error);
+  IS.list=r.issues; isBadge(); return IS.list;
+}
+function isBadge(){
+  const b=$("#ibadge"); if(!b||!IS.list) return;
+  const n=IS.list.filter(x=>x.status==="ouvert").length;
+  b.textContent=n||""; b.hidden=!n;
+}
+
+// what a card / screen is, for a report
+function isTargetOfItem(i){
+  const k=i.id.split(":"), kind=k[0];
+  const ref = kind==="audio" ? i.id.slice(6) : kind==="game" ? k[1]+" · "+k[2] : i.ref;
+  return {place:kind==="survey"?"screen":kind, ref, item_id:i.id, label:short(i.mg||i.fr)};
+}
+function isTargetOfScreen(s){
+  const r=(s.rows||[])[0]||{};
+  return {place:"screen", ref:s.name.replace(" (une seule page)",""), item_id:r.id||"", label:short(pvText(r.id,r.fr,r.mg)||s.note||"")};
+}
+
+// search index: every screen of the survey + audio clips + answers + game texts
+async function isIndex(){
+  if(IS.idx) return IS.idx;
+  const jobs=[];
+  if(!PV.layout) jobs.push(api({action:"layout"},"miara_preview_api").then(r=>{ if(r.ok){ PV.layout=r.data; PV.built=r.built_at } }));
+  for(const k of ["survey","audio","choice","game"]) if(!S.items[k]) jobs.push(api({action:"list",kind:k}).then(r=>{ if(r.ok) S.items[k]=r.items }));
+  await Promise.all(jobs);
+  const idx=[];
+  (PV.layout?.screens||[]).forEach(s=>{ if(!s.rows) return;
+    const txt=s.rows.map(r=>[r.name,pvText(r.id,r.fr,r.mg),r.fr,r.mg,r.hfr,r.hmg,
+      ...((r.w&&r.w.opts)||[]).flatMap(o=>[o.fr,o.mg])].join(" ")).join(" ");
+    idx.push({...isTargetOfScreen(s), t:norm(s.name+" "+txt)}) });
+  for(const k of ["audio","choice","game"]) (S.items[k]||[]).forEach(i=>idx.push({...isTargetOfItem(i), t:norm(i.id+" "+i.ref+" "+i.fr+" "+i.mg)}));
+  return IS.idx=idx;
+}
+
+function isForm(target){
+  $("#isheet")?.remove();
+  const d=document.createElement("div"); d.className="sheet"; d.id="isheet";
+  d.innerHTML=`<div class="sheetbox" role="dialog" aria-label="Signaler un problème">
+    <div class="st-top"><b>⚠ Signaler un problème</b><button class="btn" data-x>✕</button></div>
+    <div class="sheetbody">
+      <div class="lang">Quelle question ?</div>
+      <div id="itarget"></div>
+      <div class="lang" style="margin-top:14px">Qu'est-ce qui ne va pas ?</div>
+      <div class="tchips">${ITYPES.map(([k,t])=>`<button class="tchip" data-ty="${k}" aria-pressed="false">${t}</button>`).join("")}</div>
+      <textarea id="icomment" rows="3" placeholder="Une phrase. Ex.: l'audio dit « tsia » mais l'écran dit « eny »."></textarea>
+      <label class="btn" style="margin-top:8px;display:inline-flex;gap:6px;align-items:center">📷 Photo (si besoin)
+        <input type="file" id="iphoto" accept="image/*" hidden></label> <span class="sec" id="iphname"></span>
+      <div class="err" id="ierr"></div>
+      <button class="btn primary" id="isend" style="width:100%;margin-top:12px;padding:12px;font-size:16px">Envoyer</button>
+    </div></div>`;
+  document.body.appendChild(d); document.body.classList.add("noscroll");
+  const close=()=>{ d.remove(); document.body.classList.remove("noscroll") };
+  d.querySelector("[data-x]").onclick=close;
+  d.onclick=e=>{ if(e.target===d) close() };
+  let tgt=target, photo=null;
+  const showTarget=()=>{
+    const box=$("#itarget");
+    if(tgt){ box.innerHTML=`<div class="itgt"><span class="chip">${esc(IPLACE[tgt.place]||"")}</span> <b>${esc(tgt.ref)}</b>
+        <div class="sec">${esc(tgt.label)}</div><button class="link" id="ichange">changer</button></div>`;
+      $("#ichange").onclick=()=>{ tgt=null; showTarget() }; return }
+    box.innerHTML=`<input type="search" id="iq" placeholder="Quelques mots vus sur la tablette, ou le nom de la question">
+      <div id="ires" class="ires"><div class="sec">Chargement…</div></div>
+      <button class="link" id="inone">Je ne trouve pas · problème général</button>`;
+    $("#inone").onclick=()=>{ tgt={place:"libre",ref:"",item_id:"",label:"(général)"}; showTarget() };
+    isIndex().then(idx=>{
+      const run=()=>{ const q=norm($("#iq")?.value).split(/\s+/).filter(Boolean), res=$("#ires"); if(!res) return;
+        if(!q.length){ res.innerHTML=`<div class="sec">Tapez pour chercher (${idx.length} questions).</div>`; return }
+        const hits=idx.filter(x=>q.every(w=>x.t.includes(w))).slice(0,25);
+        res.innerHTML=hits.map((x,n)=>`<button class="ihit" data-n="${n}"><span class="chip">${esc(IPLACE[x.place])}</span> <b>${esc(x.ref)}</b><br><span class="sec">${esc(x.label)}</span></button>`).join("")
+          || `<div class="sec">Rien trouvé. Essayez d'autres mots.</div>`;
+        res.querySelectorAll(".ihit").forEach(b=>b.onclick=()=>{ const {t,...rest}=hits[+b.dataset.n]; tgt=rest; showTarget() }) };
+      let tm; $("#iq").oninput=()=>{ clearTimeout(tm); tm=setTimeout(run,200) }; run(); $("#iq").focus() });
+  };
+  showTarget();
+  d.querySelectorAll(".tchip").forEach(b=>b.onclick=()=>{ const on=b.getAttribute("aria-pressed")!=="true"; b.setAttribute("aria-pressed",on) });
+  $("#iphoto").onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+    $("#iphname").textContent="…";
+    try{ photo=await shrink(f); $("#iphname").textContent="✓ "+f.name }catch(err){ photo=null; $("#iphname").textContent="Photo illisible" } };
+  $("#isend").onclick=async()=>{
+    const types=[...d.querySelectorAll('.tchip[aria-pressed="true"]')].map(b=>b.dataset.ty), comment=$("#icomment").value.trim();
+    const err=$("#ierr");
+    if(!tgt) return err.textContent="Choisissez d'abord la question (ou « problème général »).";
+    if(!types.length && !comment) return err.textContent="Dites ce qui ne va pas: touchez un bouton ou écrivez une phrase.";
+    const b=$("#isend"); b.disabled=true; b.textContent="Envoi…";
+    try{ const r=await iapi({action:"add",...tgt,types,comment,...(photo?{photo:photo.data,photo_mime:photo.mime}:{})});
+      if(!r.ok) throw new Error(r.error);
+      close(); toast("Merci ! Problème envoyé ✓"); IS.list=null; await isLoad();
+      if(S.tab==="issues") issuesView($("#main"));
+    }catch(e){ b.disabled=false; b.textContent="Envoyer"; err.textContent="Pas envoyé: "+e.message }
+  };
+}
+// phone photos are big: max 1400 px, JPEG
+function shrink(file){
+  return new Promise((ok,ko)=>{ const img=new Image(), u=URL.createObjectURL(file);
+    img.onload=()=>{ const k=Math.min(1,1400/Math.max(img.width,img.height)), c=document.createElement("canvas");
+      c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(u); ok({mime:"image/jpeg",data:c.toDataURL("image/jpeg",.82).split(",")[1]}) };
+    img.onerror=()=>{ URL.revokeObjectURL(u); ko(new Error("image")) }; img.src=u });
+}
+
+async function issuesView(m){
+  if(!IS.list){ m.innerHTML=`<div class="loading">Chargement…</div>`;
+    try{ await isLoad() }catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)} <button class="btn small" onclick="render(true)">Réessayer</button></div>`; return } }
+  const op=IS.list.filter(x=>x.status==="ouvert"), done=IS.list.filter(x=>x.status!=="ouvert");
+  const one=x=>`<div class="card ${x.status==="ouvert"?"":"isok"}" data-i="${x.id}">
+    <div class="ch"><span class="chip">${esc(IPLACE[x.place]||"")}</span><b>${esc(x.ref||"Général")}</b>
+      ${(x.types||[]).map(t=>`<span class="chip s-a_revoir">${esc((ITYPES.find(y=>y[0]===t)||[,t])[1])}</span>`).join("")}</div>
+    ${x.label&&x.place!=="libre"?`<div class="sec">${esc(x.label)}</div>`:""}
+    ${x.comment?`<div style="margin:6px 0">${esc(x.comment)}</div>`:""}
+    <div class="ipic"></div>
+    <div class="sec">${esc(x.who)} · ${when(x.at)}</div>
+    ${x.status!=="ouvert"?`<div class="ifix">✓ Corrigé${x.fix_note?": "+esc(x.fix_note):""} <span class="sec">(${esc(x.fixed_by)} · ${when(x.fixed_at)})</span></div>`:""}
+    <div class="foot">
+      ${x.has_photo?`<button class="btn" data-a="pic">📷 Photo</button>`:""}
+      ${x.place==="screen"?`<button class="btn" data-a="see">👁 Voir l'écran</button>`:""}
+      <span class="okbtns">${x.status==="ouvert"?`<button class="btn okbtn" data-a="fix">✓ Corrigé</button>`
+        :`<button class="btn" data-a="reopen">Toujours faux</button>`}</span>
+    </div></div>`;
+  m.innerHTML=`<button class="btn primary bigstart" id="inew">⚠ Signaler un problème</button>
+    <div class="help">Une question ne va pas sur la tablette ? Signalez-la ici, ou avec <b>⚠</b> sur une carte ou dans <b>👁 Aperçu</b>.
+      Oscar corrige et met <b>✓ Corrigé</b>. Vérifiez sur la tablette après la mise à jour. Toujours faux ? <b>Toujours faux</b>.</div>
+    <h2>Ouverts (${op.length})</h2>${op.map(one).join("")||`<div class="empty">Aucun problème ouvert 🎉</div>`}
+    ${done.length?`<details class="grp" style="margin-top:14px"><summary><span class="gname">Corrigés (${done.length})</span></summary>
+      <div class="gcards">${done.map(one).join("")}</div></details>`:""}`;
+  $("#inew").onclick=()=>isForm(null);
+  m.querySelectorAll(".card[data-i]").forEach(c=>{
+    const x=IS.list.find(y=>y.id==c.dataset.i);
+    c.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{
+      const a=b.dataset.a;
+      if(a==="pic"){ b.disabled=true; const r=await iapi({action:"photo",id:x.id});
+        if(r.ok) c.querySelector(".ipic").innerHTML=`<img src="data:${r.mime};base64,${r.data}" alt="Photo du problème">`; b.remove(); return }
+      if(a==="see"){ await isIndex(); const k=(PV.layout?.screens||[]).findIndex(s=>s.name.replace(" (une seule page)","")===x.ref);
+        if(k>=0) store("miara_pv_idx",String(k)); goTab("preview"); return }
+      let note="";
+      if(a==="fix"){ note=prompt("Qu'est-ce qui a été corrigé ? (une ligne, facultatif)",""); if(note===null) return }
+      b.disabled=true;
+      try{ const r=await iapi({action:a,id:x.id,note}); if(!r.ok) throw new Error(r.error||"?");
+        await isLoad(); issuesView(m); toast(a==="fix"?"Marqué corrigé ✓":"Rouvert") }
+      catch(e){ b.disabled=false; toast("Pas enregistré: "+e.message) }
+    }) });
+}
+function goTab(t){ S.tab=t; store("miara_tab",t);
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.t===t)); render(true) }
 
 // ---------------------------------------------------------------- avancement
 async function progressView(m){
@@ -877,8 +1055,10 @@ function pvRender(m){
     <div class="pnav"><button class="round side" id="pvprev" ${PV.idx?"":"disabled"} aria-label="Écran précédent">←</button>
       <span class="sec">Glissez ou touchez les flèches</span>
       <button class="round side" id="pvnext" ${PV.idx<n-1?"":"disabled"} aria-label="Écran suivant">→</button></div>
+    <div style="text-align:center;margin-top:10px"><button class="btn" id="pvreport">⚠ Signaler cet écran</button></div>
     <div class="sec" style="text-align:center;margin-top:6px">Structure lue dans l'Excel le ${when(PV.built)} · textes en direct de la console</div>`;
   const go=d=>{ PV.idx=Math.min(n-1,Math.max(0,PV.idx+d)); store("miara_pv_idx",String(PV.idx)); pvRender(m); window.scrollTo(0,0) };
+  $("#pvreport").onclick=()=>isForm(s.rows?isTargetOfScreen(s):{place:"screen",ref:s.name,item_id:"",label:short(s.note)});
   $("#pvprev").onclick=()=>go(-1); $("#pvnext").onclick=()=>go(1);
   $("#pvjump").onchange=e=>{ PV.idx=+e.target.value; store("miara_pv_idx",String(PV.idx)); pvRender(m) };
   m.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{ PV.lang=b.dataset.l; store("miara_pv_lang",PV.lang); pvRender(m) });
