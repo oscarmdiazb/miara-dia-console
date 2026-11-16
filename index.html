@@ -217,6 +217,19 @@ img.plab{max-width:100px;display:block;margin:6px 0}
 .st-name{margin:4px 0 8px}
 .frbox{margin-top:14px;color:var(--muted);font-size:15px;line-height:1.45;border-left:3px solid var(--line);padding-left:10px}
 .st-meter .st-status{font-size:13px;color:var(--ok);font-weight:600;min-height:0}
+.mdhead{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;margin-bottom:6px}
+.mdmin{font-weight:700;color:var(--brand-d)}
+.mdfacts{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.mdcard.md-garder{border-left:5px solid var(--ok)}
+.mdcard.md-couper{border-left:5px solid var(--bad);opacity:.7}
+.mdcard.md-discuter{border-left:5px solid var(--warn)}
+.mddec[data-v="garder"][aria-pressed="true"]{background:var(--ok-l);border-color:var(--ok);color:var(--ok)}
+.mddec[data-v="couper"][aria-pressed="true"]{background:var(--bad-l);border-color:var(--bad);color:var(--bad)}
+.mdnotes{margin-top:8px;font-size:13.5px}
+.mdnotes summary{cursor:pointer;color:var(--brand-d);font-weight:600}
+.mdnote{border-top:1px solid var(--line);padding:6px 0}
+.mdadd{display:flex;gap:6px;align-items:flex-end;margin-top:6px}
+.mdadd textarea{flex:1;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--card);color:var(--ink)}
 </style>
 </head>
 <body>
@@ -229,7 +242,13 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+// English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
+S.lang = load("miara_lang")==="en" ? "en" : "fr";
+const T = (fr,en) => S.lang==="en" ? en : fr;
+const TABS_EN = {modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+  issues:"🛠 Problems",progress:"Progress"};
+const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
 const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
 const LABEL = Object.fromEntries([...ST_TEXT,...ST_AUDIO]);
@@ -260,8 +279,8 @@ async function api(body,fn="miara_api"){
 function loginView(msg){
   $("#app").innerHTML = `<form class="login" id="lf">
     <h1>Console MIARA-DIA</h1><p>Enquête · guide · audios · avancement</p>
-    <label for="lw">Votre prénom</label><input id="lw" autocomplete="name" required value="${esc(load("miara_who"))}">
-    <label for="lk">Mot de passe de l'équipe</label><input id="lk" type="password" autocomplete="current-password" required>
+    <label for="lw">Votre prénom · Your first name</label><input id="lw" autocomplete="name" required value="${esc(load("miara_who"))}">
+    <label for="lk">Mot de passe de l'équipe · Team password</label><input id="lk" type="password" autocomplete="current-password" required>
     <div style="margin-top:16px"><button class="btn primary" style="width:100%">Entrer</button></div>
     ${msg?`<div class="err">${esc(msg)}</div>`:""}</form>`;
   $("#lf").onsubmit = async e => { e.preventDefault();
@@ -274,10 +293,11 @@ function loginView(msg){
 
 function shell(){
   $("#app").innerHTML = `<header><div class="top"><div class="logo">MIARA-DIA <small>console</small></div>
-    <div class="who"><span id="qbadge"></span>👤 ${esc(S.who)} <button class="link" id="out">changer</button></div></div>
-    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${k===S.tab?"on":""}">${t}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
+    <div class="who"><span id="qbadge"></span><button class="link" id="lang" title="Français / English">${S.lang==="en"?"FR":"EN"}</button>👤 ${esc(S.who)} <button class="link" id="out">${T("changer","log out")}</button></div></div>
+    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${k===S.tab?"on":""}">${tabName(k,t)}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
     <main id="main"></main>`;
   $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
+  $("#lang").onclick=()=>{ S.lang=S.lang==="en"?"fr":"en"; store("miara_lang",S.lang); shell() };
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.shown=60; store("miara_tab",S.tab);
     document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b)); render(true) });
   render(true); Q.badge(); isLoad().catch(()=>{});
@@ -288,6 +308,7 @@ async function render(reload){
   if(S.tab==="progress") return progressView(m);
   if(S.tab==="preview") return previewView(m);
   if(S.tab==="issues") return issuesView(m);
+  if(S.tab==="modules"){ if(reload) MD.data=null; return modulesView(m) }
   if(S.tab==="recent") return recentView(m);
   if(reload || !S.items[S.tab]){
     m.innerHTML=`<div class="loading">Chargement…</div>`;
@@ -744,6 +765,102 @@ async function progressView(m){
     ${row("Jeux · texte prêt","game",["valide"])}
 </table>
 `;
+}
+
+
+// ================================================================ MODULES (baseline: which modules go in?)
+// One row per survey module (+ one per cognitive game). Garder / Couper / À discuter, minutes from the pilot,
+// how ready the texts and audios are, open problems, and a short discussion. FR / EN.
+const MD = { data:null, open:new Set() };
+const MOD_EN = {"Consentement":"Consent","Entraînement":"Practice","Partie 1 · GAD (anxiété)":"Part 1 · GAD (anxiety)",
+  "Partie 2 · CES-D (humeur)":"Part 2 · CES-D (mood)","Partie 3 · PSS / PSC":"Part 3 · PSS / PSC","Partie 4 · Attitudes":"Part 4 · Attitudes",
+  "Statut des règles":"Period status","Partie 5 · Information":"Part 5 · Information","Partie 6 · Stress":"Part 6 · Stress",
+  "Confidence (disclosure)":"Disclosure","Partie 7 · Bien-être":"Part 7 · Well-being","Calme pendant les règles":"Calm during periods",
+  "Jeu 1 · Écouter une histoire":"Game 1 · Listen to a story","Jeu 2 · Lire un texte":"Game 2 · Read a text",
+  "Jeu 3 · Calcul rapide":"Game 3 · Quick maths","Jeux de réflexion (intros)":"Thinking games (intros)",
+  "Retour des filles":"Girls' feedback","Fin":"End","Jeu des flèches (flanker)":"Arrows game (flanker)",
+  "Jeu des carrés (Corsi)":"Squares game (Corsi)","Jeu des nombres (magnitude)":"Numbers game (magnitude)",
+  "Jeu des images (Raven)":"Pictures game (Raven)"};
+const DEC = [["garder","✓ Garder","✓ Keep"],["couper","✕ Couper","✕ Cut"],["discuter","? À discuter","? Discuss"]];
+const mapi = body => api(body,"miara_module_api");
+function modName(k){ const n=k.replace(/^[\d.]+ · /,""); return S.lang==="en" ? (MOD_EN[n]||n) : n }
+const fmin = x => x==null ? "–" : (x<10 ? x.toFixed(1) : Math.round(x)).toString().replace(".",S.lang==="en"?".":",");
+
+async function modulesLoad(){
+  const jobs=[mapi({action:"list"}), isLoad().catch(()=>null)];
+  for(const k of ["survey","audio","game"]) if(!S.items[k]) jobs.push(api({action:"list",kind:k}).then(r=>{ if(r.ok) S.items[k]=r.items }));
+  const [r]=await Promise.all(jobs);
+  if(!r.ok){ if(r.error==="mot_de_passe") return loginView("Le mot de passe a changé."); throw new Error(r.error) }
+  MD.data=r;
+}
+function modulesRows(){
+  const rows={}, of={}, row=k=>rows[k]=rows[k]||{key:k,q:new Set(),txt:[0,0],aud:[0,0],gtx:[0,0],iss:0};
+  (S.items.survey||[]).forEach(i=>{ if(/^99 /.test(i.section)) return; row(i.section).q.add(i.id.split(":")[1]); of[i.id]=i.section });
+  (S.items.audio||[]).forEach(i=>{ if(/^99 /.test(i.section)) return; const r=row(i.section);
+    r.txt[1]++; r.txt[0]+=!!i.text_ready; r.aud[1]++; r.aud[0]+=i.status==="verifie"; of[i.id]=i.section });
+  (S.items.game||[]).forEach(i=>{ const k="14."+i.section, r=row(k); r.q.add(i.id); r.gtx[1]++; r.gtx[0]+=i.status==="valide"; of[i.id]=k });
+  (IS.list||[]).forEach(x=>{ if(x.status==="ouvert" && of[x.item_id]) row(of[x.item_id]).iss++ });
+  const num=k=>parseFloat(k.replace(/ · .*/,"")); 
+  return Object.values(rows).sort((a,b)=>num(a.key)-num(b.key) || a.key.localeCompare(b.key));
+}
+
+async function modulesView(m){
+  if(!MD.data){ m.innerHTML=`<div class="loading">${T("Chargement…","Loading…")}</div>`;
+    try{ await modulesLoad() }catch(e){ m.innerHTML=`<div class="empty">${T("Erreur","Error")}: ${esc(e.message)} <button class="btn small" onclick="MD.data=null;render(true)">${T("Réessayer","Retry")}</button></div>`; return } }
+  if(!MD.data) return;
+  const d=MD.data, dur=d.durations||{}, dec=d.decisions||{}, rows=modulesRows(), target=d.target||0;
+  const decOf=k=>(dec[k]||{}).decision||"";
+  const minOf=k=>(dur[k]||{}).median_min;
+  const sum=w=>rows.filter(r=>decOf(r.key)===w).reduce((a,r)=>a+(minOf(r.key)||0),0);
+  const kept=sum("garder"), disc=sum("discuter"), none=rows.filter(r=>!decOf(r.key)).length;
+  const noMin=rows.filter(r=>decOf(r.key)==="garder" && minOf(r.key)==null && !/^14\.\d/.test(r.key)).length;
+  const over = target && kept>target;
+  const notes=k=>(d.notes||[]).filter(n=>n.module===k);
+  const frac=(a,cls)=>a[1]?`<span>${a[0]}/${a[1]}</span>${bar(a[0],a[1],cls)}`:"";
+  m.innerHTML=`<h2 style="margin-top:0">${T("Baseline : quels modules ?","Baseline: which modules?")}</h2>
+    <div class="help">${T(
+      "Pour chaque module : <b>Garder</b>, <b>Couper</b> ou <b>À discuter</b>. Écrivez pourquoi en dessous. Les minutes viennent du pilote (médiane). Le total compte seulement les modules « Garder ».",
+      "For each module: <b>Keep</b>, <b>Cut</b> or <b>Discuss</b>. Write why below it. Minutes come from the pilot (median). The total counts only the “Keep” modules.")}
+      ${d.durations?.from_tests?`<br><b>${T("Attention : minutes des enquêtes TEST (pas encore de vraies).","Careful: minutes from TEST surveys (no real ones yet).")}</b>`:""}</div>
+    <div class="stats">
+      <div class="stat" style="${over?"border-color:var(--bad)":""}"><b style="${over?"color:var(--bad)":""}">${fmin(kept)} min</b><span>${T("modules gardés","kept modules")}${noMin?` (+${noMin} ${T("sans minutes","without minutes")})`:""}</span></div>
+      <div class="stat"><b><input id="mdtarget" type="number" min="5" max="300" value="${target||""}" placeholder="?" style="width:64px;font:inherit;font-size:20px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)"> min</b><span>${T("limite par fille","limit per girl")}</span></div>
+      <div class="stat"><b>${fmin(disc)} min</b><span>${T("à discuter","to discuss")}</span></div>
+      <div class="stat"><b>${none}</b><span>${T("sans décision","no decision yet")}</span></div>
+      <div class="stat"><b>${fmin((dur._overall||{}).median_min)} min</b><span>${T("pilote, tout le formulaire","pilot, whole form")}${dur._overall?` (n=${dur._overall.n})`:""}</span></div>
+    </div>
+    ${d.durations?"":`<div class="help">${T("Pas encore de minutes du pilote. Oscar lance <code>python3 console/sync_progress.py</code>.","No pilot minutes yet. Oscar runs <code>python3 console/sync_progress.py</code>.")}</div>`}
+    ${rows.map(r=>{ const k=r.key, dk=decOf(k), info=dec[k], ns=notes(k), mi=dur[k], game=/^14\.\d/.test(k), open=MD.open.has(k);
+      return `<div class="card mdcard md-${dk||"none"}" data-k="${esc(k)}">
+        <div class="mdhead"><span class="gname">${esc(k.replace(/ · .*/,""))} · ${esc(modName(k))}</span>
+          <span class="mdmin">${game?T("dans « Jeux de réflexion »","inside “Thinking games”"):mi?`~${fmin(mi.median_min)} min <span class="sec">(n=${mi.n})</span>`:"– min"}</span></div>
+        <div class="gprog mdfacts"><span>${r.q.size} ${game?T("textes","texts"):T("questions","questions")}</span>
+          ${r.txt[1]?`<span>${T("Texte","Text")}</span>${frac(r.txt)}<span>Audio</span>${frac(r.aud,"a")}`:""}
+          ${r.gtx[1]?`<span>${T("Textes du jeu","Game texts")}</span>${frac(r.gtx)}`:""}
+          ${r.iss?`<span class="chip" style="background:var(--warn-l);color:var(--warn)">⚠ ${r.iss} ${T("problème(s)","problem(s)")}</span>`:""}</div>
+        <div class="tchips">${DEC.map(([v,fr,en])=>`<button class="tchip mddec" data-v="${v}" aria-pressed="${dk===v}">${T(fr,en)}</button>`).join("")}
+          ${info&&info.who?`<span class="sec" style="align-self:center">${esc(info.who)} · ${when(info.at)}</span>`:""}</div>
+        <details class="mdnotes" ${open?"open":""}><summary>💬 ${ns.length?ns.length+" "+T("commentaire(s)","comment(s)"):T("Commenter","Comment")}</summary>
+          ${ns.map(n=>`<div class="mdnote"><b>${esc(n.who)}</b> <span class="sec">${when(n.at)}</span><br>${esc(n.text)}</div>`).join("")}
+          <div class="mdadd"><textarea rows="2" placeholder="${T("Pourquoi garder / couper ?","Why keep / cut?")}"></textarea>
+          <button class="btn small primary mdsend">${T("Envoyer","Send")}</button></div></details>
+      </div>` }).join("")}`;
+  $("#mdtarget").onchange=async e=>{ const v=parseInt(e.target.value,10);
+    try{ const r=await mapi({action:"target",minutes:v}); if(!r.ok) throw new Error(T("entre 5 et 300","between 5 and 300"));
+      d.target=v; modulesView(m) }catch(err){ toast(T("Pas enregistré: ","Not saved: ")+err.message) } };
+  m.querySelectorAll(".mdcard").forEach(c=>{ const k=c.dataset.k;
+    c.querySelector(".mdnotes").ontoggle=e=>{ e.target.open?MD.open.add(k):MD.open.delete(k) };
+    c.querySelectorAll(".mddec").forEach(b=>b.onclick=async()=>{ const v=b.getAttribute("aria-pressed")==="true"?"":b.dataset.v;
+      c.querySelectorAll(".mddec").forEach(x=>x.disabled=true);
+      try{ const r=await mapi({action:"decide",module:k,decision:v}); if(!r.ok) throw new Error(r.error);
+        d.decisions[k]={decision:v,who:S.who,at:new Date().toISOString()}; modulesView(m) }
+      catch(err){ toast(T("Pas enregistré: ","Not saved: ")+err.message); modulesView(m) } });
+    c.querySelector(".mdsend").onclick=async e=>{ const ta=c.querySelector("textarea"), t=ta.value.trim(); if(!t) return;
+      e.target.disabled=true;
+      try{ const r=await mapi({action:"note",module:k,text:t}); if(!r.ok) throw new Error(r.error);
+        MD.open.add(k); await modulesLoad(); modulesView(m) }
+      catch(err){ e.target.disabled=false; toast(T("Pas enregistré: ","Not saved: ")+err.message) } };
+  });
 }
 
 async function recentView(m){
