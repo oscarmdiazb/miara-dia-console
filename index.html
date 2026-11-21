@@ -267,6 +267,10 @@ function light(t){ // *italique*, **gras**, {ref:x} → affichage
 function vars(t){ return (String(t).match(/\$\{[^}]+\}/g)||[]).sort().join(" ") }
 
 function aapi(body){ return api(body,"miara_audio_api") }
+// boys clips: id audio:boys.<clip>. "Lié" = same words as a girls clip, already recorded → nothing to do.
+const isBoy = i => String(i?.id||"").startsWith("audio:boys.");
+const gOf = v => (S.items.audio||[]).find(x=>x.id==="audio:"+v);
+const linkOf = i => { const m=isBoy(i) && /^= filles · (.+)$/.exec(i.ref||""); return m?m[1]:"" };
 async function api(body,fn="miara_api"){
   const r = await fetch(SUPA_URL+"/rest/v1/rpc/"+fn,{method:"POST",
     headers:{apikey:SUPA_KEY,Authorization:"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
@@ -326,7 +330,8 @@ async function render(reload){
 const HELP = {
   audio:`1. Relisez le malgache. Bon ? <b>✓ Texte prêt</b>.<br>
    2. <b>●</b> enregistrer · <b>■</b> arrêter · <b>▶</b> écouter. Bon ? <b>✓ Audio prêt</b>. Pas bon ? <b>●</b> pour refaire.<br>
-   Lisez seulement le malgache (pas les [crochets]). Après « — », lisez aussi les réponses.`,
+   Lisez seulement le malgache (pas les [crochets]). Après « — », lisez aussi les réponses.<br>
+   <b>Garçons</b>: sections « Garçons · … » (en bas). « 🔗 Clip des filles » = déjà enregistré, rien à faire.`,
   survey:`Relisez le malgache. Corrigez si besoin, puis <b>✓ Texte prêt</b>. Ne changez pas <code>\${…}</code>.`,
   choice:`Les réponses (Oui / Non, échelles…). Elles s'affichent en boutons et sont lues à la fin des clips, après « — ». Corrigez le malgache ici une seule fois, puis <b>✓ Texte prêt</b>.`,
   game:`Corrigez le malgache, puis <b>✓ Texte prêt</b>. Jouez à droite (sur téléphone: <b>▶ Jouer</b>) pour voir vos textes dans le jeu, même pas encore sauvegardés.<br>
@@ -397,6 +402,9 @@ function listView(m){
 
 function statsHtml(){
   const all=(S.items[S.tab]||[]).filter(i=>S.tab!=="game"||i.id.split(":")[1]===GM.g), c=counts(all), audio=S.tab==="audio";
+  if(audio && all.some(isBoy)){ const line=(t,l)=>{ const k=counts(l);
+      return `<div class="sum"><span><b>${t}</b></span><span><b>${k.t}</b>/${k.n} textes prêts</span><span><b>${k.r}</b>/${k.n} enregistrés</span><span><b>${k.a}</b>/${k.n} audios prêts</span></div>` };
+    return line("Filles",all.filter(i=>!isBoy(i)))+line("Garçons",all.filter(isBoy)) }
   return `<div class="sum"><span><b>${c.t}</b>/${c.n} textes prêts</span>
     ${audio?`<span><b>${c.r}</b>/${c.n} enregistrés</span><span><b>${c.a}</b>/${c.n} audios prêts</span>`:""}</div>`;
 }
@@ -408,8 +416,8 @@ function refreshProgress(sec){
 
 function card(i){
   const audio=S.tab==="audio", cur=S.tab==="curriculum";
-  const v = audio ? i.id.slice(6) : "";
-  const has = audio && !!(takeOf(v)||REC.local[v]);
+  const v = audio ? i.id.slice(6) : "", lk = audio ? linkOf(i) : "";
+  const has = audio && !!(takeOf(lk||v)||REC.local[lk||v]);
   const [q,o] = audio ? splitMg(i.mg) : [i.mg,""], [fq,fo] = audio ? splitMg(i.fr) : [i.fr,""];
   const tOk=textOk(i), aOk=audioOk(i);
   return `<div class="card ${allOk(i)?"isok":""}" data-id="${esc(i.id)}">
@@ -417,11 +425,14 @@ function card(i){
       ${audio?`<span class="saveas">${esc(v)}</span><span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span>`
              :`<span class="ref">${esc(i.ref.split(" · ").pop())}</span>`}
       ${i.flag&&!tOk?`<span class="chip s-a_revoir" title="${esc(i.flag)}">⚠ texte à vérifier</span>`:""}
+      ${lk?`<span class="chip s-verifie">🔗 Clip des filles « ${esc(lk)} »</span>`:""}
+      ${lk&&gOf(lk)&&gOf(lk).status!=="verifie"?`<span class="chip s-a_corriger" style="white-space:normal">⚠ le clip des filles est « ${esc(SHORT[gOf(lk).status]||gOf(lk).status)} » : il sert aussi aux garçons</span>`:""}
     </div>
+    ${audio&&isBoy(i)&&i.note?`<div class="opts">${lk?"Rien à enregistrer. ":""}${esc(i.note)}</div>`:""}
     <div class="cols">
       <div>
         <div class="lang">Malagasy</div>
-        ${audio?`<textarea class="mg read" data-f="mg" data-opts="${esc(o)}" rows="${Math.min(10,Math.max(2,Math.ceil(q.length/45)))}">${esc(q)}</textarea>
+        ${audio?`<textarea class="mg read" data-f="mg" data-opts="${esc(o)}" ${lk?"readonly":""} rows="${Math.min(10,Math.max(2,Math.ceil(q.length/45)))}">${esc(q)}</textarea>
           ${o?`<div class="opts">— ${esc(o)}</div>`:""}`
         :`<textarea class="mg" data-f="mg" rows="${Math.min(12,Math.max(2,Math.ceil((i.mg||"").length/60)))}">${esc(i.mg)}</textarea>`}
         <div class="warn" data-w></div>
@@ -435,11 +446,11 @@ function card(i){
     </div>
     <div class="foot">
       <button class="btn primary" data-act="save" hidden>Sauvegarder</button>
-      ${audio?`<button class="btn" data-act="studio">● Enregistrer</button>
-        <button class="btn" data-act="play" ${has?"":"disabled"}>▶</button>`:""}
+      ${audio&&!lk?`<button class="btn" data-act="studio">● Enregistrer</button>`:""}
+      ${audio?`<button class="btn" data-act="play" ${has?"":"disabled"}>▶</button>`:""}
       <button class="btn" data-act="report" title="Signaler un problème" aria-label="Signaler un problème">⚠</button>
       <span class="okbtns">
-        ${audio?`<button class="btn okbtn ${tOk?"on-ok":""}" data-tr="${tOk?0:1}">✓ Texte prêt</button>
+        ${lk?"":audio?`<button class="btn okbtn ${tOk?"on-ok":""}" data-tr="${tOk?0:1}">✓ Texte prêt</button>
           <button class="btn okbtn ${aOk?"on-ok":""}" data-st="${aOk?"enregistre":"verifie"}" ${!has&&!aOk?"disabled title='Enregistrez d’abord'":""}>✓ Audio prêt</button>`
         :`<button class="btn okbtn ${tOk?"on-ok":""}" data-st="${tOk?"brouillon":"valide"}">✓ Texte prêt</button>`}
       </span>
@@ -472,7 +483,7 @@ function wire(m){
     const rb=c.querySelector('[data-act="report"]');
     if(rb) rb.onclick=()=>isForm(isTargetOfItem(i));
     const pb=c.querySelector('[data-act="play"]');
-    if(pb) pb.onclick=()=>playTake(i.id.replace(/^audio:/,""),pb);
+    if(pb) pb.onclick=()=>playTake(linkOf(i)||i.id.replace(/^audio:/,""),pb);
   });
 }
 function splitMg(mg){ const s=String(mg||""), k=s.indexOf(" — "); return k<0?[s,""]:[s.slice(0,k),s.slice(k+3)] }
@@ -739,7 +750,7 @@ async function progressView(m){
   const [p,...kinds]=await Promise.all([api({action:"progress"}),
     ...["audio","choice","game"].map(k=>S.items[k]?Promise.resolve({items:S.items[k]}):api({action:"list",kind:k}))]);
   ["audio","choice","game"].forEach((k,n)=>S.items[k]=kinds[n].items||[]);
-  const row=(name,k,doneSt)=>{ const a=S.items[k], d=a.filter(i=>doneSt==="text"?i.text_ready:doneSt.includes(i.status)).length;
+  const row=(name,k,doneSt,keep)=>{ const a=S.items[k].filter(keep||(()=>true)), d=a.filter(i=>doneSt==="text"?i.text_ready:doneSt.includes(i.status)).length;
     return `<tr><td>${name}</td><td class="n">${d} / ${a.length}</td><td style="width:40%"><div class="prog" style="margin:0"><i style="width:${a.length?100*d/a.length:0}%"></i></div></td></tr>` };
   const d=p.data;
   let field=`<div class="empty">Pas encore de données de terrain.<br>Oscar lance <code>python3 console/sync_progress.py</code> pour les mettre à jour.</div>`;
@@ -758,9 +769,12 @@ async function progressView(m){
   m.innerHTML=`<h2 style="margin-top:0">Terrain (SurveyCTO)</h2>
     <div class="sec" style="margin-bottom:8px">Dernière mise à jour: ${p.synced_at?when(p.synced_at):"jamais"}</div>${field}
     <h2>Préparation</h2><table>
-    ${row("Audio enquête · texte prêt","audio","text")}
-    ${row("Audio enquête · enregistrés","audio",["enregistre","verifie"])}
-    ${row("Audio enquête · audio prêt","audio",["verifie"])}
+    ${row("Audio filles · texte prêt","audio","text",i=>!isBoy(i))}
+    ${row("Audio filles · enregistrés","audio",["enregistre","verifie"],i=>!isBoy(i))}
+    ${row("Audio filles · audio prêt","audio",["verifie"],i=>!isBoy(i))}
+    ${row("Audio garçons · texte prêt","audio","text",isBoy)}
+    ${row("Audio garçons · enregistrés","audio",["enregistre","verifie"],isBoy)}
+    ${row("Audio garçons · audio prêt","audio",["verifie"],isBoy)}
     ${row("Choix de réponses · texte prêt","choice",["valide"])}
     ${row("Jeux · texte prêt","game",["valide"])}
 </table>
@@ -796,7 +810,7 @@ async function modulesLoad(){
 function modulesRows(){
   const rows={}, of={}, row=k=>rows[k]=rows[k]||{key:k,q:new Set(),txt:[0,0],aud:[0,0],gtx:[0,0],iss:0};
   (S.items.survey||[]).forEach(i=>{ if(/^99 /.test(i.section)) return; row(i.section).q.add(i.id.split(":")[1]); of[i.id]=i.section });
-  (S.items.audio||[]).forEach(i=>{ if(/^99 /.test(i.section)) return; const r=row(i.section);
+  (S.items.audio||[]).forEach(i=>{ if(/^99 /.test(i.section) || isBoy(i)) return; const r=row(i.section);
     r.txt[1]++; r.txt[0]+=!!i.text_ready; r.aud[1]++; r.aud[0]+=i.status==="verifie"; of[i.id]=i.section });
   (S.items.game||[]).forEach(i=>{ const k="14."+i.section, r=row(k); r.q.add(i.id); r.gtx[1]++; r.gtx[0]+=i.status==="valide"; of[i.id]=k });
   (IS.list||[]).forEach(x=>{ if(x.status==="ouvert" && of[x.item_id]) row(of[x.item_id]).iss++ });
@@ -1048,19 +1062,20 @@ function studioRender(){
   const el=$("#studio"); if(!el) return;
   const all=S.items.audio||[], i=all[ST.idx]; if(!i){ el.innerHTML=`<div class="empty">Rien à enregistrer.</div>`; return }
   const v=i.id.slice(6), [q,o]=splitMg(i.mg), [fq,fo]=splitMg(i.fr), rec=REC.state==="rec", busy=REC.state!=="idle";
-  const done=all.filter(doneSt).length, hasTake=!!(S.takes[v]||REC.local[v]), isOk=i.status==="verifie";
+  const lk=linkOf(i), done=all.filter(doneSt).length, hasTake=!!(S.takes[lk||v]||REC.local[lk||v]), isOk=i.status==="verifie";
   el.innerHTML=`
   <div class="st-top"><button class="btn small" id="stclose">✕</button>
     <span><b>${done}</b>/${all.length} enregistrés</span>
     <span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span></div>
   <div class="stext">
-    <div class="st-name"><span class="saveas">${esc(v)}</span>${i.flag?` <span class="chip s-a_revoir">⚠ texte à vérifier</span>`:""}</div>
+    <div class="st-name"><span class="saveas">${esc(v)}</span>${i.flag?` <span class="chip s-a_revoir">⚠ texte à vérifier</span>`:""}${lk?` <span class="chip s-verifie">🔗 Clip des filles « ${esc(lk)} » — rien à faire</span>`:""}</div>
+    ${isBoy(i)&&i.note&&!lk?`<div class="frbox">${esc(i.note)}</div>`:""}
     ${ST.edit?`<textarea id="stedit" class="mg read" rows="8">${esc(q)}</textarea>
       <div class="foot"><button class="btn primary" id="stsave">Sauvegarder</button><button class="btn" id="stcancel">Annuler</button></div>`
       :`<div class="readbig">${readHtml(q)}</div>`}
     ${o?`<div class="readbig2">— ${esc(o)}</div>`:""}
     <div class="frbox">${esc(fq)}${fo?`<br>— ${esc(fo)}`:""}</div>
-    ${!ST.edit&&!busy?`<button class="link" id="stedbtn">✏️ corriger le malgache</button>`:""}
+    ${!ST.edit&&!busy&&!lk?`<button class="link" id="stedbtn">✏️ corriger le malgache</button>`:""}
   </div>
   <div class="st-ctl">
     <div class="st-msg ${ST.msgc}">${esc(ST.msg)}</div>
@@ -1068,20 +1083,20 @@ function studioRender(){
     <div class="st-btns">
       <button class="round side" id="stprev" ${busy?"disabled":""} aria-label="Clip précédent">←</button>
       ${rec?`<button class="round stop" id="ststop" aria-label="Arrêter">■</button>`
-           :`<button class="round rec" id="strec" ${busy||ST.edit?"disabled":""} aria-label="Enregistrer">●</button>`}
+           :`<button class="round rec" id="strec" ${busy||ST.edit||lk?"disabled":""} aria-label="Enregistrer">●</button>`}
       <button class="round side" id="stnext" ${busy?"disabled":""} aria-label="Clip suivant">→</button>
     </div>
     <div class="st-row2">
       <button class="btn" id="stplay" ${hasTake&&!busy?"":"disabled"}>▶ Écouter</button>
       <button class="btn ${i.text_ready?"on-ok":""}" id="sttext" ${busy?"disabled":""}>✓ Texte prêt</button>
-      <button class="btn ${isOk?"on-ok":""}" id="stok" ${busy||!S.takes[v]?"disabled":""}>✓ Audio prêt</button>
+      <button class="btn ${isOk?"on-ok":""}" id="stok" ${busy||!S.takes[v]||lk?"disabled":""}>✓ Audio prêt</button>
     </div>
     <button class="btn primary wide" id="stgo" ${busy?"disabled":""}>Suivant →</button>
   </div>`;
   const on=(s,f)=>{ const b=el.querySelector(s); if(b) b.onclick=f };
   on("#stclose",closeStudio); on("#stprev",()=>go(-1)); on("#stnext",()=>go(1)); on("#stgo",()=>go(1));
   on("#strec",()=>startRec(v)); on("#ststop",stopRec);
-  on("#stplay",e=>playTake(v,e.currentTarget));
+  on("#stplay",e=>playTake(lk||v,e.currentTarget));
   on("#stok",()=>studioSave(i,{status:isOk?"enregistre":"verifie"},false));
   on("#sttext",()=>studioSave(i,{text_ready:!i.text_ready},false));
   on("#stedbtn",()=>{ ST.edit=true; studioRender(); $("#stedit")?.focus() });
