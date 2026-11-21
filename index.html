@@ -230,6 +230,34 @@ img.plab{max-width:100px;display:block;margin:6px 0}
 .mdnote{border-top:1px solid var(--line);padding:6px 0}
 .mdadd{display:flex;gap:6px;align-items:flex-end;margin-top:6px}
 .mdadd textarea{flex:1;font:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:6px;background:var(--card);color:var(--ink)}
+/* ---- plan baseline ---- */
+.plrole{border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+.r-primary{background:var(--brand);color:#fff}
+.r-mechanism{background:var(--info-l);color:var(--info)}
+.r-agency{background:var(--brand-l);color:var(--brand-d)}
+.r-secondary{background:var(--warn-l);color:var(--warn)}
+.r-harm{background:var(--ink);color:var(--bg)}
+.r-background,.r-control,.r-setup{background:var(--grey-l);color:var(--muted)}
+.plvoice{border:1px dashed var(--brand);border-radius:12px;padding:9px 12px;margin:0 0 8px 18px;font-style:italic;color:var(--brand-d);font-size:14.5px}
+.plgrp.regles{border-left:5px solid var(--brand)}
+.plwhy{font-size:14px;color:var(--muted);padding:10px 14px 0}
+.plq{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin:8px 10px}
+.plq .ch{margin-bottom:4px}
+.plfr{font-size:15px}
+.plmg{font-size:14.5px;color:var(--muted);margin-top:4px;border-left:3px solid var(--line);padding-left:8px}
+.plmg.none{color:var(--warn);border-left-color:var(--warn)}
+.plch{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.plch span{border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:12.5px;color:var(--muted)}
+.plnote{font-size:13px;color:var(--warn);margin-top:4px}
+.st-keep{background:var(--ok-l);color:var(--ok)}
+.st-reenable{background:var(--info-l);color:var(--info)}
+.st-new{background:var(--brand-l);color:var(--brand-d)}
+.st-rewrite{background:var(--warn-l);color:var(--warn)}
+.mdnote.res{opacity:.55}
+.mdnote.res .ntxt{text-decoration:line-through}
+.plmods{padding-bottom:4px}
+.pllist{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.pllist span{background:var(--grey-l);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:13px;text-decoration:line-through}
 </style>
 </head>
 <body>
@@ -242,11 +270,11 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
 const T = (fr,en) => S.lang==="en" ? en : fr;
-const TABS_EN = {modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+const TABS_EN = {plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
 const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
@@ -313,6 +341,7 @@ async function render(reload){
   if(S.tab==="preview") return previewView(m);
   if(S.tab==="issues") return issuesView(m);
   if(S.tab==="modules"){ if(reload) MD.data=null; return modulesView(m) }
+  if(S.tab==="plan"){ if(reload) PL.data=null; return planView(m) }
   if(S.tab==="recent") return recentView(m);
   if(reload || !S.items[S.tab]){
     m.innerHTML=`<div class="loading">Chargement…</div>`;
@@ -874,6 +903,97 @@ async function modulesView(m){
       try{ const r=await mapi({action:"note",module:k,text:t}); if(!r.ok) throw new Error(r.error);
         MD.open.add(k); await modulesLoad(); modulesView(m) }
       catch(err){ e.target.disabled=false; toast(T("Pas enregistré: ","Not saved: ")+err.message) } };
+  });
+}
+
+// ================================================================ PLAN BASELINE (girls / boys: every question + comments)
+// Content: console/build_plan.py --push (table miara_plan). Comments: miara_plan_notes, key "<module>" or "<module>/<var>".
+const PL = { data:null, s:load("miara_plan_s")||"girls", open:new Set(), nopen:new Set(), mg:load("miara_plan_mg")!=="0", only:false };
+const papi = body => api(body,"miara_plan_api");
+const ROLE = {primary:["Résultat principal","Primary outcome"],mechanism:["Mécanisme","Mechanism"],agency:["Agency","Agency"],
+  secondary:["Secondaire","Secondary"],harm:["Risque","Harm check"],background:["Contexte","Background"],control:["Contrôle","Control"],setup:["Début / fin","Setup"]};
+const QST = {keep:["Gardée","Kept"],reenable:["À réactiver","Re-enable"],new:["Nouvelle","New"],rewrite:["À réécrire","Rewrite"]};
+async function planLoad(){
+  const r=await papi({action:"list"});
+  if(!r.ok){ if(r.error==="mot_de_passe") return loginView("Le mot de passe a changé."); throw new Error(r.error) }
+  PL.data=r;
+}
+function planNotes(qid){ return (PL.data.notes||[]).filter(n=>n.survey===PL.s && n.qid===qid) }
+function planNotesHtml(qid,ph){
+  const ns=planNotes(qid), openN=ns.filter(n=>!n.resolved).length, open=PL.nopen.has(qid);
+  return `<details class="mdnotes plnotes" data-q="${esc(qid)}" ${open?"open":""}><summary>💬 ${ns.length?`${openN} ${T("ouvert(s)","open")}${ns.length>openN?` · ${ns.length-openN} ${T("traité(s)","done")}`:""}`:T("Commenter","Comment")}</summary>
+    ${ns.map(n=>`<div class="mdnote ${n.resolved?"res":""}"><b>${esc(n.who)}</b> <span class="sec">${when(n.at)}</span>
+      <button class="link plres" data-id="${n.id}" style="float:right">${n.resolved?T("↺ rouvrir","↺ reopen"):T("✓ traité","✓ done")}</button>
+      <div class="ntxt">${esc(n.text)}</div>${n.resolved&&n.resolved_by?`<span class="sec">✓ ${esc(n.resolved_by)}</span>`:""}</div>`).join("")}
+    <div class="mdadd"><textarea rows="2" placeholder="${esc(ph)}"></textarea><button class="btn small primary plsend">${T("Envoyer","Send")}</button></div></details>`;
+}
+async function planView(m){
+  if(!PL.data){ m.innerHTML=`<div class="loading">${T("Chargement…","Loading…")}</div>`;
+    try{ await planLoad() }catch(e){ m.innerHTML=`<div class="empty">${T("Erreur","Error")}: ${esc(e.message)} <button class="btn small" onclick="PL.data=null;render(true)">${T("Réessayer","Retry")}</button></div>`; return } }
+  if(!PL.data) return;
+  const p=(PL.data.plans||{})[PL.s];
+  const seg=`<div class="seg">${[["girls",T("Filles","Girls")],["boys",T("Garçons","Boys")]].map(([k,t])=>`<button data-s="${k}" class="${k===PL.s?"on":""}">${t}</button>`).join("")}</div>`;
+  if(!p){ m.innerHTML=`<div class="pvtop">${seg}</div><div class="empty">${T("Pas encore de plan. Oscar lance","No plan yet. Oscar runs")} <code>python3 console/build_plan.py --push</code></div>`; planWire(m); return }
+  const mods=p.modules||[], allN=(PL.data.notes||[]).filter(n=>n.survey===PL.s), openN=allN.filter(n=>!n.resolved).length;
+  const qn=q=>q.var, keyOf=(mo,q)=>mo.key+"/"+qn(q);
+  const nq=mods.reduce((a,mo)=>a+(mo.items?mo.items.length:0),0);
+  const hasN=mo=>(PL.data.notes||[]).some(n=>n.survey===PL.s && (n.qid===mo.key || n.qid.startsWith(mo.key+"/")));
+  const roleChip=r=>`<span class="plrole r-${esc(r)}">${T(...(ROLE[r]||[r,r]))}</span>`;
+  const qhtml=(mo,q)=>{ const k=keyOf(mo,q);
+    return `<div class="plq">
+      <div class="ch"><span class="ref">${esc(q.var)}</span><span class="chip st-${esc(q.status)}">${T(...(QST[q.status]||[q.status,q.status]))}</span>
+        <span class="sec">${esc(q.src_label||"")}${q.multi?" · "+T("plusieurs réponses","several answers"):""}</span></div>
+      <div class="plfr">${esc(q.fr)}</div>
+      ${PL.mg?(q.mg?`<div class="plmg" lang="mg">${esc(q.mg)}</div>`:`<div class="plmg none">${T("Malgache à écrire","Malagasy to write")}</div>`):""}
+      ${q.choices&&q.choices.length?`<div class="plch">${q.choices.map(c=>`<span>${esc(PL.mg&&c[1]?c[0]+" · "+c[1]:c[0])}</span>`).join("")}</div>`:""}
+      ${q.note?`<div class="plnote">✎ ${esc(q.note)}</div>`:""}
+      ${planNotesHtml(k,T("Un commentaire sur cette question…","A comment on this question…"))}</div>` };
+  const mins=mods.reduce((a,mo)=>a+(mo.min||0),0);
+  m.innerHTML=`<h2 style="margin-top:0">${esc(T(p.title,PL.s==="girls"?"Girls' survey · baseline":"Boys' survey · baseline"))}</h2>
+    <div class="pvtop">${seg}
+      <label class="sec" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="plmg" ${PL.mg?"checked":""}> ${T("Voir le malgache","Show Malagasy")}</label>
+      <label class="sec" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="plonly" ${PL.only?"checked":""}> ${T("Seulement les modules commentés","Only commented modules")}</label>
+      <button class="link" id="plall">${T("Tout ouvrir / fermer","Open / close all")}</button></div>
+    <div class="help">${T("Ouvrez un module (▸) pour voir toutes ses questions, en français et en malgache, avec les réponses. Sous chaque question : 💬 pour commenter. Oscar marque « ✓ traité » quand c'est pris en compte.",
+      "Open a module (▸) to see all its questions, in French and Malagasy, with the answers. Under each question: 💬 to comment. Oscar marks “✓ done” when it is taken into account.")}</div>
+    <div class="stats">${(p.stats||[]).map(s=>`<div class="stat"><b>${esc(s[0])}</b><span>${esc(T(s[1],s[2]||s[1]))}</span></div>`).join("")}
+      <div class="stat"><b>${nq}</b><span>${T("questions dans cette liste","questions in this list")}</span></div>
+      <div class="stat"><b>${openN}</b><span>${T("commentaires ouverts","open comments")}</span></div></div>
+    <div class="plmods">${mods.map(mo=>{
+      if(mo.voice) return `<div class="plvoice">🔊 ${esc(mo.voice)}</div>`;
+      if(PL.only && !hasN(mo)) return "";
+      const n=allN.filter(x=>x.qid===mo.key || x.qid.startsWith(mo.key+"/")), no=n.filter(x=>!x.resolved).length;
+      return `<details class="grp plgrp ${mo.block==="regles"?"regles":""}" data-k="${esc(mo.key)}" ${PL.open.has(mo.key)?"open":""}>
+        <summary><span class="gname">${esc(mo.key)} · ${esc(T(mo.fr,mo.en))}</span>${roleChip(mo.role)}
+          <span class="gprog">~${fmin(mo.min)} min · ${(mo.items||[]).length} ${T("questions","questions")}${n.length?` · 💬 ${no}/${n.length}`:""}</span></summary>
+        ${(mo.why_fr||mo.why_en)?`<div class="plwhy">${esc(T(mo.why_fr,mo.why_en))}</div>`:""}
+        <div style="padding:0 10px">${planNotesHtml(mo.key,T("Un commentaire sur tout le module…","A comment on the whole module…"))}</div>
+        ${(mo.items||[]).map(q=>qhtml(mo,q)).join("")}<div style="height:8px"></div></details>` }).join("")}</div>
+    <h2>${T("Retiré de l'enquête","Not in the survey")}</h2><div class="pllist">${(p.off||[]).map(x=>`<span>${esc(x)}</span>`).join("")}</div>
+    ${planNotesHtml("_off",T("Faut-il garder quelque chose de cette liste ?","Should we keep something from this list?"))}
+    <h2>${T("À décider ensemble","To decide together")}</h2>
+    ${(p.decide||[]).map((d,i)=>`<div class="card"><div>${esc(d)}</div>${planNotesHtml("_decide"+i,T("Votre avis…","Your view…"))}</div>`).join("")}
+    <div class="sec" style="margin:14px 0">${T("Plan mis à jour","Plan updated")} : ${when(p.updated_at)} · ~${fmin(mins)} min</div>`;
+  planWire(m);
+}
+function planWire(m){
+  m.querySelectorAll(".seg button[data-s]").forEach(b=>b.onclick=()=>{ PL.s=b.dataset.s; store("miara_plan_s",PL.s); planView(m) });
+  const mg=$("#plmg"); if(mg) mg.onchange=e=>{ PL.mg=e.target.checked; store("miara_plan_mg",PL.mg?"1":"0"); planView(m) };
+  const on=$("#plonly"); if(on) on.onchange=e=>{ PL.only=e.target.checked; planView(m) };
+  const all=$("#plall"); if(all) all.onclick=()=>{ const gs=[...m.querySelectorAll(".plgrp")], any=gs.some(g=>!g.open);
+    gs.forEach(g=>{ g.open=any; any?PL.open.add(g.dataset.k):PL.open.delete(g.dataset.k) }) };
+  m.querySelectorAll(".plgrp").forEach(g=>g.addEventListener("toggle",e=>{ if(e.target!==g) return; g.open?PL.open.add(g.dataset.k):PL.open.delete(g.dataset.k) }));
+  m.querySelectorAll(".plnotes").forEach(d=>{ const q=d.dataset.q;
+    d.addEventListener("toggle",e=>{ if(e.target!==d) return; d.open?PL.nopen.add(q):PL.nopen.delete(q) });
+    d.querySelector(".plsend").onclick=async e=>{ const ta=d.querySelector("textarea"), t=ta.value.trim(); if(!t) return;
+      e.target.disabled=true;
+      try{ const r=await papi({action:"note",survey:PL.s,qid:q,text:t}); if(!r.ok) throw new Error(r.error);
+        PL.nopen.add(q); const y=window.scrollY; await planLoad(); planView(m); window.scrollTo(0,y); toast(T("Commentaire envoyé","Comment sent")) }
+      catch(err){ e.target.disabled=false; toast(T("Pas enregistré: ","Not saved: ")+err.message) } };
+    d.querySelectorAll(".plres").forEach(b=>b.onclick=async()=>{ b.disabled=true;
+      try{ const r=await papi({action:"resolve",id:b.dataset.id}); if(!r.ok) throw new Error(r.error||"");
+        const y=window.scrollY; await planLoad(); planView(m); window.scrollTo(0,y) }
+      catch(err){ b.disabled=false; toast(T("Pas enregistré: ","Not saved: ")+err.message) } });
   });
 }
 
