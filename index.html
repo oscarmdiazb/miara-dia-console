@@ -258,6 +258,22 @@ img.plab{max-width:100px;display:block;margin:6px 0}
 .plmods{padding-bottom:4px}
 .pllist{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
 .pllist span{background:var(--grey-l);color:var(--muted);border-radius:999px;padding:3px 10px;font-size:13px;text-decoration:line-through}
+.plflow{border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;margin:4px 0 14px;background:var(--bg)}
+.plflow h3{margin:0 0 8px;font-size:15px}
+.flw{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px 4px}
+.fst{border:0;cursor:pointer;white-space:normal;text-align:left;font:inherit;border-radius:10px;padding:6px 9px;min-width:84px;max-width:170px;display:flex;flex-direction:column;gap:1px;line-height:1.2}
+.fst b{font-size:13.5px}.fst small{font-size:12px;opacity:.85}
+.fst:hover{outline:2px solid var(--brand)}
+.plgrp{scroll-margin-top:110px}
+.fst.r-background,.fst.r-control,.fst.r-setup{border:1px solid var(--line)}
+.far{align-self:center;color:var(--muted);font-size:15px;padding:0 1px}
+.fvo{align-self:center;font-size:15px}
+.fblk{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px 4px;border:2px dashed var(--brand);border-radius:12px;padding:20px 6px 6px;position:relative}
+.fblk>.fbt{position:absolute;top:2px;left:9px;font-size:11.5px;font-weight:700;color:var(--brand-d);text-transform:uppercase;letter-spacing:.05em}
+.fbar{display:flex;height:10px;border-radius:6px;overflow:hidden;margin-top:12px;gap:2px}
+.fbar span{display:block;height:100%}
+.flg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12px;color:var(--muted)}
+.flg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 </style>
 </head>
 <body>
@@ -927,6 +943,28 @@ function planNotesHtml(qid,ph){
       <div class="ntxt">${esc(n.text)}</div>${n.resolved&&n.resolved_by?`<span class="sec">✓ ${esc(n.resolved_by)}</span>`:""}</div>`).join("")}
     <div class="mdadd"><textarea rows="2" placeholder="${esc(ph)}"></textarea><button class="btn small primary plsend">${T("Envoyer","Send")}</button></div></details>`;
 }
+function planFlow(mods){
+  // steps: box html or {blk:[...]}; a voice line puts 🔊 on the next arrow
+  const steps=[]; let blk=null, t=0, vo=null;
+  const box=mo=>{ const a=t; t+=(mo.min||0);
+    return {v:vo, h:`<button class="fst plrole r-${esc(mo.role)}" data-goto="${esc(mo.key)}" title="${esc(T(...(ROLE[mo.role]||[mo.role,mo.role])))}">
+      <small>${esc(mo.key)} · ${T("à","at")} ${Math.round(a)} min</small><b>${esc(T(mo.fr,mo.en))}</b><small>~${fmin(mo.min)} min</small></button>`} };
+  mods.forEach(mo=>{
+    if(mo.voice){ vo=mo.voice; return }
+    if(mo.block==="regles"){ if(!blk){ blk={v:vo,blk:[]}; vo=null; steps.push(blk) } blk.blk.push(box(mo)); vo=null; return }
+    blk=null; steps.push(box(mo)); vo=null });
+  const ar=(v,first)=>first?(v?`<span class="far" title="${esc(v)}">🔊</span>`:""):`<span class="far"${v?` title="${esc(v)}"`:""}>${v?"🔊→":"→"}</span>`;
+  const seq=(xs,firstAr)=>xs.map((x,i)=>ar(x.v,i===0&&!firstAr)+(x.blk
+    ? `<div class="fblk"><span class="fbt">${T("Bloc règles · quand la confiance est là","Periods block · once trust is built")}</span>${seq(x.blk,false)}</div>` : x.h)).join("");
+  const html=seq(steps,false)+(vo?ar(vo,false).replace("→",""):"");
+  const col={primary:"var(--brand)",agency:"var(--brand-l)",mechanism:"var(--info)",secondary:"var(--warn)",harm:"var(--ink)",background:"var(--grey-l)",control:"var(--grey-l)",setup:"var(--line)"};
+  const real=mods.filter(mo=>!mo.voice), tot=real.reduce((a,mo)=>a+(mo.min||0),0)||1;
+  const used=[...new Set(real.map(mo=>mo.role))];
+  return `<div class="plflow"><h3>${T("Le déroulé de l'entretien","How the interview flows")} · ~${fmin(tot)} min</h3>
+    <div class="flw">${html}</div>
+    <div class="fbar">${real.map(mo=>`<span style="flex:${mo.min||0.1};background:${col[mo.role]||"var(--line)"}" title="${esc(T(mo.fr,mo.en))} · ${fmin(mo.min)} min"></span>`).join("")}</div>
+    <div class="flg">${used.map(r=>`<span><i style="background:${col[r]||"var(--line)"}"></i>${T(...(ROLE[r]||[r,r]))}</span>`).join("")}<span>🔊 ${T("message de la voix (confiance)","voice message (trust)")}</span><span>${T("Cliquez une étape pour l'ouvrir","Click a step to open it")}</span></div></div>`;
+}
 async function planView(m){
   if(!PL.data){ m.innerHTML=`<div class="loading">${T("Chargement…","Loading…")}</div>`;
     try{ await planLoad() }catch(e){ m.innerHTML=`<div class="empty">${T("Erreur","Error")}: ${esc(e.message)} <button class="btn small" onclick="PL.data=null;render(true)">${T("Réessayer","Retry")}</button></div>`; return } }
@@ -959,6 +997,7 @@ async function planView(m){
     <div class="stats">${(p.stats||[]).map(s=>`<div class="stat"><b>${esc(s[0])}</b><span>${esc(T(s[1],s[2]||s[1]))}</span></div>`).join("")}
       <div class="stat"><b>${nq}</b><span>${T("questions dans cette liste","questions in this list")}</span></div>
       <div class="stat"><b>${openN}</b><span>${T("commentaires ouverts","open comments")}</span></div></div>
+    ${planFlow(mods)}
     <div class="plmods">${mods.map(mo=>{
       if(mo.voice) return `<div class="plvoice">🔊 ${esc(mo.voice)}</div>`;
       if(PL.only && !hasN(mo)) return "";
@@ -977,6 +1016,9 @@ async function planView(m){
   planWire(m);
 }
 function planWire(m){
+  m.querySelectorAll(".fst[data-goto]").forEach(b=>b.onclick=()=>{ const g=m.querySelector(`.plgrp[data-k="${CSS.escape(b.dataset.goto)}"]`);
+    if(!g){ PL.only=false; PL.open.add(b.dataset.goto); planView(m); const g2=m.querySelector(`.plgrp[data-k="${CSS.escape(b.dataset.goto)}"]`); if(g2) g2.scrollIntoView({behavior:"smooth",block:"start"}); return }
+    g.open=true; PL.open.add(b.dataset.goto); g.scrollIntoView({behavior:"smooth",block:"start"}) });
   m.querySelectorAll(".seg button[data-s]").forEach(b=>b.onclick=()=>{ PL.s=b.dataset.s; store("miara_plan_s",PL.s); planView(m) });
   const mg=$("#plmg"); if(mg) mg.onchange=e=>{ PL.mg=e.target.checked; store("miara_plan_mg",PL.mg?"1":"0"); planView(m) };
   const on=$("#plonly"); if(on) on.onchange=e=>{ PL.only=e.target.checked; planView(m) };
