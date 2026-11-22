@@ -249,6 +249,14 @@ img.plab{max-width:100px;display:block;margin:6px 0}
 .plch{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
 .plch span{border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:12.5px;color:var(--muted)}
 .plnote{font-size:13px;color:var(--warn);margin-top:4px}
+.plen{font-size:14.5px;color:var(--info);margin-top:4px;border-left:3px solid var(--info-l);padding-left:8px}
+.plkid{margin-top:8px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:var(--bg)}
+.plkh{font-size:12.5px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.plopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0 8px}
+.plopt{font-size:14px;margin:4px 0;background:var(--card)}
+.plopt img{width:40px;height:40px}
+.plkid img.plab{max-width:240px;width:100%}
+.plo2{color:var(--muted)}.plo2.en{color:var(--info)}
 .st-keep{background:var(--ok-l);color:var(--ok)}
 .st-reenable{background:var(--info-l);color:var(--info)}
 .st-new{background:var(--brand-l);color:var(--brand-d)}
@@ -963,7 +971,8 @@ async function modulesView(m){
 
 // ================================================================ PLAN BASELINE (girls / boys: every question + comments)
 // Content: console/build_plan.py --push (table miara_plan). Comments: miara_plan_notes, key "<module>" or "<module>/<var>".
-const PL = { data:null, s:load("miara_plan_s")||"girls", open:new Set(), nopen:new Set(), mg:load("miara_plan_mg")!=="0", only:false };
+const PL = { data:null, s:load("miara_plan_s")||"girls", open:new Set(), nopen:new Set(), mg:load("miara_plan_mg")!=="0", only:false,
+  en:load("miara_plan_en")?load("miara_plan_en")==="1":S.lang==="en", kid:load("miara_plan_kid")!=="0" };
 const papi = body => api(body,"miara_plan_api");
 const ROLE = {primary:["Résultat principal","Primary outcome"],mechanism:["Mécanisme","Mechanism"],agency:["Agency","Agency"],
   secondary:["Secondaire","Secondary"],harm:["Risque","Harm check"],background:["Contexte","Background"],control:["Contrôle","Control"],setup:["Début / fin","Setup"]};
@@ -1006,7 +1015,10 @@ function planFlow(mods){
 }
 async function planView(m){
   if(!PL.data){ m.innerHTML=`<div class="loading">${T("Chargement…","Loading…")}</div>`;
-    try{ await planLoad() }catch(e){ m.innerHTML=`<div class="empty">${T("Erreur","Error")}: ${esc(e.message)} <button class="btn small" onclick="PL.data=null;render(true)">${T("Réessayer","Retry")}</button></div>`; return } }
+    try{ await Promise.all([planLoad(), loadTakes(),
+        PV.media?null:api({action:"media"},"miara_preview_api").then(r=>{ PV.media={};
+          for(const [k,v] of Object.entries(r.media||{})) PV.media[k]=`data:${v.mime};base64,${v.data}` }).catch(()=>{ PV.media={} })]) }
+    catch(e){ m.innerHTML=`<div class="empty">${T("Erreur","Error")}: ${esc(e.message)} <button class="btn small" onclick="PL.data=null;render(true)">${T("Réessayer","Retry")}</button></div>`; return } }
   if(!PL.data) return;
   const p=(PL.data.plans||{})[PL.s];
   const seg=`<div class="seg">${[["girls",T("Filles","Girls")],["boys",T("Garçons","Boys")]].map(([k,t])=>`<button data-s="${k}" class="${k===PL.s?"on":""}">${t}</button>`).join("")}</div>`;
@@ -1016,23 +1028,40 @@ async function planView(m){
   const nq=mods.reduce((a,mo)=>a+(mo.items?mo.items.length:0),0);
   const hasN=mo=>(PL.data.notes||[]).some(n=>n.survey===PL.s && (n.qid===mo.key || n.qid.startsWith(mo.key+"/")));
   const roleChip=r=>`<span class="plrole r-${esc(r)}">${T(...(ROLE[r]||[r,r]))}</span>`;
-  const qhtml=(mo,q)=>{ const k=keyOf(mo,q);
+  const img=n=>n&&PV.media&&PV.media[n]?PV.media[n]:"";
+  const kidHtml=k=>{ if(!k) return "";
+    const play=k.take?(S.takes&&S.takes[k.take]?`<button class="btn small plplay" data-v="${esc(k.take)}">▶ ${T("Écouter","Listen")}</button>`
+      :`<span class="chip pvno">🔇 ${T("pas encore enregistré","not recorded yet")}</span>`):"";
+    const opt=o=>`<div class="popt plopt">${img(o.img)?`<img src="${img(o.img)}" alt="">`:""}<span>${esc(o.fr)}${PL.mg&&o.mg?`<span class="plo2" lang="mg"> · ${esc(o.mg)}</span>`:""}${PL.en&&o.en?`<span class="plo2 en"> · ${esc(o.en)}</span>`:""}</span></div>`;
+    return `<div class="plkid"><div class="plkh">📱 ${T("Ce que voit l'élève (formulaire final)","What the student sees (final form)")} ${play}</div>
+      ${img(k.img)?`<img class="plab" src="${img(k.img)}" alt="">`:""}
+      ${k.hint?`<div class="phint">${esc(k.hint[0])}${PL.en&&k.hint[2]?` <span class="plo2 en">· ${esc(k.hint[2])}</span>`:""}</div>`:""}
+      ${k.opts&&k.opts.length?`<div class="plopts">${k.opts.map(opt).join("")}</div>${k.multi?`<div class="sec">${T("plusieurs réponses","several answers")}</div>`:""}`:""}
+      ${k.opts_note?`<div class="sec">${esc(k.opts_note)}</div>`:""}</div>` };
+  const qhtml=(mo,q)=>{ const k=keyOf(mo,q), kd=PL.kid?q.kid:null;
+    const fr=kd&&kd.fr?kd.fr:q.fr, mg=kd&&kd.mg?kd.mg:q.mg;
     return `<div class="plq">
       <div class="ch"><span class="ref">${esc(q.var)}</span><span class="chip st-${esc(q.status)}">${T(...(QST[q.status]||[q.status,q.status]))}</span>
         <span class="sec">${esc(q.src_label||"")}${q.multi?" · "+T("plusieurs réponses","several answers"):""}</span></div>
-      <div class="plfr">${esc(q.fr)}</div>
-      ${PL.mg?(q.mg?`<div class="plmg" lang="mg">${esc(q.mg)}</div>`:`<div class="plmg none">${T("Malgache à écrire","Malagasy to write")}</div>`):""}
-      ${q.choices&&q.choices.length?`<div class="plch">${q.choices.map(c=>`<span>${esc(PL.mg&&c[1]?c[0]+" · "+c[1]:c[0])}</span>`).join("")}</div>`:""}
+      <div class="plfr">${esc(fr)}</div>
+      ${PL.en&&q.kid&&q.kid.en?`<div class="plen" lang="en">🇬🇧 ${esc(q.kid.en)}</div>`:""}
+      ${PL.mg?(mg?`<div class="plmg" lang="mg">${esc(mg)}</div>`:`<div class="plmg none">${T("Malgache à écrire","Malagasy to write")}</div>`):""}
+      ${kd?kidHtml(kd):""}
+      ${!(kd&&(kd.opts||kd.opts_note))&&q.choices&&q.choices.length?`<div class="plch">${q.choices.map(c=>`<span>${esc(PL.mg&&c[1]?c[0]+" · "+c[1]:c[0])}</span>`).join("")}</div>`:""}
       ${q.note?`<div class="plnote">✎ ${esc(q.note)}</div>`:""}
       ${planNotesHtml(k,T("Un commentaire sur cette question…","A comment on this question…"))}</div>` };
   const mins=mods.reduce((a,mo)=>a+(mo.min||0),0);
   m.innerHTML=`<h2 style="margin-top:0">${esc(T(p.title,PL.s==="girls"?"Girls' survey · baseline":"Boys' survey · baseline"))}</h2>
     <div class="pvtop">${seg}
       <label class="sec" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="plmg" ${PL.mg?"checked":""}> ${T("Voir le malgache","Show Malagasy")}</label>
+      <label class="sec" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="plen" ${PL.en?"checked":""}> ${T("Voir l'anglais","Show English")}</label>
+      <label class="sec" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="plkid" ${PL.kid?"checked":""}> ${T("Voir comme l'élève (images, voix)","Student view (pictures, voice)")}</label>
       <label class="sec" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="plonly" ${PL.only?"checked":""}> ${T("Seulement les modules commentés","Only commented modules")}</label>
       <button class="link" id="plall">${T("Tout ouvrir / fermer","Open / close all")}</button></div>
     <div class="help">${T("Ouvrez un module (▸) pour voir toutes ses questions, en français et en malgache, avec les réponses. Sous chaque question : 💬 pour commenter. Oscar marque « ✓ traité » quand c'est pris en compte.",
-      "Open a module (▸) to see all its questions, in French and Malagasy, with the answers. Under each question: 💬 to comment. Oscar marks “✓ done” when it is taken into account.")}</div>
+      "Open a module (▸) to see all its questions, in French and Malagasy, with the answers. Under each question: 💬 to comment. Oscar marks “✓ done” when it is taken into account.")}
+      ${T(" 📱 = le texte du formulaire final, avec l'image et ▶ la voix que l'élève entend. 🇬🇧 = traduction anglaise (pour les relectrices, pas sur les téléphones).",
+          " 📱 = the final form text, with the picture and ▶ the voice the student hears. 🇬🇧 = English translation (for reviewers, not on the phones).")}</div>
     <div class="stats">${(p.stats||[]).map(s=>`<div class="stat"><b>${esc(s[0])}</b><span>${esc(T(s[1],s[2]||s[1]))}</span></div>`).join("")}
       <div class="stat"><b>${nq}</b><span>${T("questions dans cette liste","questions in this list")}</span></div>
       <div class="stat"><b>${openN}</b><span>${T("commentaires ouverts","open comments")}</span></div></div>
@@ -1061,6 +1090,9 @@ function planWire(m){
   m.querySelectorAll(".seg button[data-s]").forEach(b=>b.onclick=()=>{ PL.s=b.dataset.s; store("miara_plan_s",PL.s); planView(m) });
   const mg=$("#plmg"); if(mg) mg.onchange=e=>{ PL.mg=e.target.checked; store("miara_plan_mg",PL.mg?"1":"0"); planView(m) };
   const on=$("#plonly"); if(on) on.onchange=e=>{ PL.only=e.target.checked; planView(m) };
+  const en=$("#plen"); if(en) en.onchange=e=>{ PL.en=e.target.checked; store("miara_plan_en",PL.en?"1":"0"); planView(m) };
+  const kd=$("#plkid"); if(kd) kd.onchange=e=>{ PL.kid=e.target.checked; store("miara_plan_kid",PL.kid?"1":"0"); planView(m) };
+  m.querySelectorAll(".plplay").forEach(b=>b.onclick=()=>playTake(b.dataset.v,b));
   const all=$("#plall"); if(all) all.onclick=()=>{ const gs=[...m.querySelectorAll(".plgrp")], any=gs.some(g=>!g.open);
     gs.forEach(g=>{ g.open=any; any?PL.open.add(g.dataset.k):PL.open.delete(g.dataset.k) }) };
   m.querySelectorAll(".plgrp").forEach(g=>g.addEventListener("toggle",e=>{ if(e.target!==g) return; g.open?PL.open.add(g.dataset.k):PL.open.delete(g.dataset.k) }));
