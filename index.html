@@ -274,6 +274,14 @@ img.plab{max-width:100px;display:block;margin:6px 0}
 .fbar span{display:block;height:100%}
 .flg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;font-size:12px;color:var(--muted)}
 .flg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.todohead{background:var(--grey-l);border-radius:12px;padding:10px 12px;margin:8px 0}
+.todohead .big{font-size:18px;margin:2px 0 6px}
+.todohead .mbar{display:block;width:100%;height:10px}
+.todohead table{width:100%;border-collapse:collapse;font-size:14px;margin-top:6px}
+.todohead td,.todohead th{padding:4px 2px;border-bottom:1px solid var(--line,#ddd);text-align:left}
+.todohead td.n{text-align:right;white-space:nowrap}
+.todohead tr.tdone td{opacity:.55}
+.todohead summary{cursor:pointer;font-weight:600;margin-top:6px}
 </style>
 </head>
 <body>
@@ -286,11 +294,11 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["todo","✅ À faire"],["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
 const T = (fr,en) => S.lang==="en" ? en : fr;
-const TABS_EN = {plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+const TABS_EN = {todo:"✅ To do",plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
 const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
@@ -315,6 +323,13 @@ function aapi(body){ return api(body,"miara_audio_api") }
 const isBoy = i => String(i?.id||"").startsWith("audio:boys.");
 const gOf = v => (S.items.audio||[]).find(x=>x.id==="audio:"+v);
 const linkOf = i => { const m=isBoy(i) && /^= filles · (.+)$/.exec(i.ref||""); return m?m[1]:"" };
+// ✅ À faire (Ianja, phone): only the cards that still need work (text not checked, not recorded, not checked by ear),
+// 🔗 cards hidden (recorded on the girls card), `code` first, then survey order (girls, then boys). A done card leaves.
+S.view = "all";
+const isTodoView = () => S.tab==="audio" && S.view==="todo";
+const needsWork = i => !linkOf(i) && !allOk(i);
+const navOn = k => k==="todo" ? isTodoView() : (k===S.tab && !(k==="audio" && isTodoView()));
+const codeFirst = l => l.slice().sort((a,b)=>(b.id==="audio:code")-(a.id==="audio:code"));
 async function api(body,fn="miara_api"){
   const r = await fetch(SUPA_URL+"/rest/v1/rpc/"+fn,{method:"POST",
     headers:{apikey:SUPA_KEY,Authorization:"Bearer "+SUPA_KEY,"Content-Type":"application/json"},
@@ -342,11 +357,12 @@ function loginView(msg){
 function shell(){
   $("#app").innerHTML = `<header><div class="top"><div class="logo">MIARA-DIA <small>console</small></div>
     <div class="who"><span id="qbadge"></span><button class="link" id="lang" title="Français / English">${S.lang==="en"?"FR":"EN"}</button>👤 ${esc(S.who)} <button class="link" id="out">${T("changer","log out")}</button></div></div>
-    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${k===S.tab?"on":""}">${tabName(k,t)}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
+    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${navOn(k)?"on":""}">${tabName(k,t)}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
     <main id="main"></main>`;
   $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
   $("#lang").onclick=()=>{ S.lang=S.lang==="en"?"fr":"en"; store("miara_lang",S.lang); shell() };
-  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.shown=60; store("miara_tab",S.tab);
+  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.view="all"; S.shown=60; store("miara_tab",S.tab);
+    if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
     document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b)); render(true) });
   render(true); Q.badge(); isLoad().catch(()=>{});
 }
@@ -383,6 +399,10 @@ const HELP = {
    Gardez <code>{n} {total} {i} {len} {side}</code> tels quels (ils deviennent des nombres ou des mots). Gardez les paires <code>&lt;b&gt;…&lt;/b&gt;</code> (gras).
    Le titre des images Raven est dessiné dans les images: gardez-le court. Il change seulement après la mise à jour par Oscar.`,
   curriculum:`Écrivez le malgache, puis <b>✓ Texte prêt</b>. <code>*mot*</code> = italique, <code>**mot**</code> = gras.`};
+HELP.todo = `Ici: seulement ce qui reste à faire, dans l'ordre de l'enquête (filles, puis garçons). Arrêtez quand vous voulez.<br>
+   Pour chaque carte: <b>1.</b> Lisez le malgache. Corrigez si besoin (<b>Sauvegarder</b>), puis <b>✓ Texte prêt</b>.
+   <b>2.</b> <b>●</b> enregistrer, <b>▶</b> écouter, puis <b>✓ Audio prêt</b>. Les deux faits = la carte disparaît.<br>
+   Lisez seulement le malgache (pas les [crochets]). Après « — », lisez aussi les réponses. Téléphone: <b>🎙 Commencer</b> = un clip par écran.`;
 const SHORT = {vide:"À traduire",brouillon:"À relire",a_revoir:"À relire",valide:"Texte prêt",
   a_enregistrer:"À enregistrer",a_corriger:"À refaire",enregistre:"Enregistré",verifie:"Audio prêt"};
 // a linked boys card (🔗) is as far as its girls clip: recorded / ready only when the girls clip is
@@ -397,7 +417,9 @@ function filtered(){
   const f=S.filters[S.tab]||{}, q=(f.q||"").toLowerCase();
   const show = { "":()=>true, rec:i=>!isRecorded(i), text:i=>!textOk(i),
                  audio:i=>isRecorded(i)&&!audioOk(i), ready:allOk, todo:i=>!allOk(i) }[f.show||""] || (()=>true);
-  return (S.items[S.tab]||[]).filter(i=> show(i) && (S.tab!=="game" || i.id.split(":")[1]===GM.g) && (!q || (i.fr+" "+i.mg+" "+i.ref).toLowerCase().includes(q)));
+  const r=(S.items[S.tab]||[]).filter(i=> show(i) && (S.tab!=="game" || i.id.split(":")[1]===GM.g) && (!q || (i.fr+" "+i.mg+" "+i.ref).toLowerCase().includes(q))
+    && (!isTodoView() || needsWork(i)));
+  return isTodoView() ? codeFirst(r) : r;
 }
 
 function counts(list){
@@ -415,14 +437,14 @@ function groupSum(sec){
 
 function listView(m){
   const all=S.items[S.tab]||[], audio=S.tab==="audio", f=S.filters[S.tab]=S.filters[S.tab]||{};
-  const list=filtered(), secs=[...new Set(all.map(i=>i.section))];
+  const list=filtered(), tv=isTodoView(), secs=tv?[...new Set(list.map(i=>i.section))]:[...new Set(all.map(i=>i.section))];
   const op=S.open[S.tab]=S.open[S.tab]||new Set(), searching=!!(f.q||f.show);
   m.innerHTML = `
-   ${audio?`<button class="btn primary bigstart" id="gostudio">🎙 Commencer à enregistrer</button>`:""}
+   ${audio?`<button class="btn primary bigstart" id="gostudio">🎙 Commencer${tv?` (${list.length} à faire)`:" à enregistrer"}</button>`:""}
    <div id="stats">${statsHtml()}</div>
-   <div class="help">${HELP[S.tab]}</div>
+   <div class="help">${tv?HELP.todo:HELP[S.tab]}</div>
    <div class="bar">
-     <select id="fshow">
+     <select id="fshow" ${tv?"hidden":""}>
        <option value="">Tout</option>
        ${audio?`<option value="text" ${f.show==="text"?"selected":""}>Texte pas prêt</option>
          <option value="rec" ${f.show==="rec"?"selected":""}>Pas encore enregistré</option>
@@ -432,7 +454,7 @@ function listView(m){
      <input type="search" id="fq" placeholder="Chercher…" value="${esc(f.q||"")}">
    </div>
    <div id="groups">${secs.map(sec=>{ const its=list.filter(i=>i.section===sec); if(!its.length) return "";
-       const open = searching || op.has(sec);
+       const open = searching || op.has(sec) || (tv && sec===secs[0]);
        return `<details class="grp" data-sec="${esc(sec)}" ${open?"open":""}><summary>${groupSum(sec)}</summary>
          <div class="gcards">${open?its.map(card).join(""):""}</div></details>` }).join("") || `<div class="empty">Rien ici.</div>`}</div>`;
   const upd=()=>{ Object.assign(f,{show:$("#fshow").value,q:$("#fq").value}); listView(m);
@@ -447,7 +469,20 @@ function listView(m){
   wire(m);
 }
 
+function todoTable(){
+  const rows=[], by=new Map();
+  (S.items.audio||[]).filter(i=>!linkOf(i)).forEach(i=>{ let r=by.get(i.section);
+    if(!r){ r={sec:i.section,boy:isBoy(i),n:0,d:0}; by.set(i.section,r); rows.push(r) } r.n++; r.d+=allOk(i)?1:0 });
+  const sum=l=>l.reduce((a,r)=>({n:a.n+r.n,d:a.d+r.d}),{n:0,d:0}), pct=(d,n)=>n?Math.round(100*d/n):100;
+  const G=rows.filter(r=>!r.boy), B=rows.filter(r=>r.boy), g=sum(G), b=sum(B), t={n:g.n+b.n,d:g.d+b.d};
+  const line=r=>`<tr class="${r.d===r.n?"tdone":""}"><td>${r.d===r.n?"✅ ":""}${esc(r.sec.replace(/^Garçons · /,""))}</td><td class="n">${r.d} / ${r.n}</td><td class="n">${pct(r.d,r.n)}%</td></tr>`;
+  return `<div class="todohead"><div class="big"><b>${t.n-t.d}</b> cartes à faire · <b>${pct(t.d,t.n)}%</b> fini</div>${bar(t.d,t.n,"a")}
+    <div class="sum"><span>Filles <b>${g.d}/${g.n}</b> (${pct(g.d,g.n)}%)</span><span>Garçons <b>${b.d}/${b.n}</b> (${pct(b.d,b.n)}%)</span></div>
+    <details class="ptab" ${innerWidth>700?"open":""}><summary>Avancement par partie</summary><table>
+    <tr><th colspan="3">Filles</th></tr>${G.map(line).join("")}<tr><th colspan="3">Garçons</th></tr>${B.map(line).join("")}</table></details></div>`;
+}
 function statsHtml(){
+  if(isTodoView()) return todoTable();
   const all=(S.items[S.tab]||[]).filter(i=>S.tab!=="game"||i.id.split(":")[1]===GM.g), c=counts(all), audio=S.tab==="audio";
   if(audio && all.some(isBoy)){ const line=(t,l)=>{ const k=counts(l);
       return `<div class="sum"><span><b>${t}</b></span><span><b>${k.t}</b>/${k.n} textes prêts</span><span><b>${k.r}</b>/${k.n} enregistrés</span><span><b>${k.a}</b>/${k.n} audios prêts</span></div>` };
@@ -560,6 +595,7 @@ async function doSave(c,extra){
     if(i.assignee) S.people.add(i.assignee);
     const tmp=document.createElement("div"); tmp.innerHTML=card(i); const n=tmp.firstElementChild;
     c.replaceWith(n); wire({querySelectorAll:s=>s===".card"?[n]:[]});
+    if(isTodoView() && !needsWork(i)){ n.remove(); toast("✓ Fini ! Carte suivante."); refreshProgress(i.section); return }
     refreshProgress(i.section);
     toast(Object.keys(extra).length? "Prêt ✓" : "Sauvegardé ✓");
   }catch(e){ c.style.opacity=1; toast("Pas enregistré: "+e.message) }
@@ -1188,15 +1224,17 @@ async function playTake(v,btn){
 function refreshCard(v){
   if(S.tab!=="audio") return;
   const i=(S.items.audio||[]).find(x=>x.id==="audio:"+v), c=document.querySelector(`.card[data-id="audio:${CSS.escape(v)}"]`);
-  if(c&&i){ const t=document.createElement("div"); t.innerHTML=card(i); const n=t.firstElementChild; c.replaceWith(n); wire({querySelectorAll:s=>s===".card"?[n]:[]}) }
+  if(c&&i){ const t=document.createElement("div"); t.innerHTML=card(i); const n=t.firstElementChild; c.replaceWith(n); wire({querySelectorAll:s=>s===".card"?[n]:[]});
+    if(isTodoView() && !needsWork(i)) n.remove() }
   if(i) refreshProgress(i.section) }
 
 // ---- le studio: un clip par écran
 const ST={idx:0,mode:"todo",edit:false,msg:"",msgc:""};
 const doneSt=i=>["enregistre","verifie"].includes(i.status);
-const isTodo=i=>!doneSt(i) && !Q.forVar(i.id.slice(6)) && !linkOf(i);   // 🔗 cards: recorded on the girls card
+const isTodo=i=>isTodoView() ? needsWork(i) : (!doneSt(i) && !Q.forVar(i.id.slice(6)) && !linkOf(i));   // 🔗 cards: recorded on the girls card
 function openStudio(id){
   const all=S.items.audio||[]; let k=id?all.findIndex(i=>i.id===id):all.findIndex(isTodo); if(k<0) k=0;
+  if(!id && isTodoView()){ const c=all.findIndex(i=>i.id==="audio:code" && needsWork(i)); if(c>=0) k=c }   // code first
   ST.idx=k; ST.edit=false; ST.msg="";
   let el=$("#studio"); if(!el){ el=document.createElement("div"); el.id="studio"; el.className="studio"; document.body.appendChild(el) }
   document.body.classList.add("noscroll"); studioRender() }
@@ -1230,7 +1268,7 @@ function studioRender(){
   const lk=linkOf(i), done=all.filter(doneSt).length, hasTake=!!(S.takes[lk||v]||REC.local[lk||v]), isOk=i.status==="verifie";
   el.innerHTML=`
   <div class="st-top"><button class="btn small" id="stclose">✕</button>
-    <span><b>${done}</b>/${all.length} enregistrés</span>
+    <span>${isTodoView()?`<b>${all.filter(needsWork).length}</b> à faire`:`<b>${done}</b>/${all.length} enregistrés`}</span>
     <span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span></div>
   <div class="stext">
     <div class="st-name"><span class="saveas">${esc(v)}</span>${i.flag?` <span class="chip s-a_revoir">⚠ texte à vérifier</span>`:""}${lk?` <span class="chip s-verifie">🔗 Clip des filles « ${esc(lk)} » — rien à faire</span>`:""}</div>
@@ -1366,8 +1404,14 @@ function pvRender(m){
     if(Math.abs(dx)>70) go(dx<0?1:-1) });
 }
 
+setInterval(async()=>{ if(!isTodoView()||!S.key||document.hidden||$("#studio")||REC.state!=="idle") return;
+  try{ const r=await api({action:"list",kind:"audio"}); if(!r.ok) return; S.items.audio=r.items; await loadTakes();
+    const st=$("#stats"); if(st){ const o=st.querySelector("details.ptab")?.open; st.innerHTML=statsHtml(); const d=st.querySelector("details.ptab"); if(d&&o!==undefined) d.open=o } }catch(e){} },120000);
+
 // ---------------------------------------------------------------- démarrage
-S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"audio";
+S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"todo";
+if(/^#(afaire|todo|ianja)$/i.test(location.hash)) S.tab="todo";
+if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
 if(!TABS.some(t=>t[0]===S.tab)) S.tab="audio";
 if(S.who && S.key){ api({action:"ping"}).then(r=>{ if(r.ok){ shell(); Q.load() } else loginView() })
   .catch(()=>{ loginView("Pas de connexion internet ? Les prises non envoyées restent sur ce téléphone.") }) }
