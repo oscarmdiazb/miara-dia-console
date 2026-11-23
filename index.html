@@ -96,6 +96,16 @@ h2{font-size:17px;margin:18px 0 8px}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:14px;z-index:9;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .loading{color:var(--muted);padding:20px;text-align:center}
+.vt-A{--tc:var(--info);--tl:var(--info-l)} .vt-B{--tc:var(--brand);--tl:var(--brand-l)}
+.vday{margin:18px 0 6px;font-size:18px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+.vteam{border-left:5px solid var(--tc);border-radius:0 12px 12px 0}
+.vteam h3{margin:0 0 4px;font-size:16px;color:var(--tc)}
+.vstop{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.vnum{flex:none;width:26px;height:26px;border-radius:50%;background:var(--tc);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
+.vlong{background:var(--warn-l);color:var(--warn);border-radius:8px;padding:6px 9px;font-size:13px;margin:6px 0}
+#vmap{height:360px;border-radius:12px;border:1px solid var(--line);margin-bottom:10px;background:var(--grey-l)}
+.vpin{width:24px;height:24px;border-radius:50%;color:#fff;font:700 12px/24px system-ui,sans-serif;text-align:center;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .sum{display:flex;gap:16px;font-size:15px;margin-bottom:4px}.sum b{font-size:20px}
 .prog{position:relative}.prog i{position:absolute;left:0;top:0}.prog i.rec{background:var(--info-l)}
 .help{font-size:13.5px;color:var(--muted);background:none;border:0;padding:0 2px;margin-bottom:10px}
@@ -302,11 +312,11 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["todo","✅ À faire"],["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
 const T = (fr,en) => S.lang==="en" ? en : fr;
-const TABS_EN = {todo:"✅ To do",plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
 const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
@@ -378,6 +388,7 @@ function shell(){
 async function render(reload){
   const m=$("#main");
   if(S.tab==="progress") return progressView(m);
+  if(S.tab==="visits") return visitsView(m);
   if(S.tab==="preview") return previewView(m);
   if(S.tab==="issues") return issuesView(m);
   if(S.tab==="modules"){ if(reload) MD.data=null; return modulesView(m) }
@@ -837,6 +848,68 @@ function goTab(t){ S.tab=t; store("miara_tab",t);
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.t===t)); render(true) }
 
 // ---------------------------------------------------------------- avancement
+// ---------------------------------------------------------------- 🚐 visites écoles (plan written by console/build_visits.py)
+function loadLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(loadLeaflet.p) return loadLeaflet.p;
+  return loadLeaflet.p = new Promise((ok,ko)=>{
+    const c=document.createElement("link"); c.rel="stylesheet"; c.href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"; document.head.appendChild(c);
+    const s=document.createElement("script"); s.src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"; s.onload=ok; s.onerror=ko; document.head.appendChild(s) });
+}
+async function visitsView(m){
+  m.innerHTML=`<div class="loading">Chargement…</div>`;
+  let p;
+  try{ p=await api({action:"progress"}) }catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)} <button class="btn small" onclick="render(true)">Réessayer</button></div>`; return }
+  if(!p.ok && p.error==="mot_de_passe") return loginView("Le mot de passe a changé.");
+  const V=p.data && p.data.visits;
+  if(!V){ m.innerHTML=`<div class="empty">Pas encore de plan de visites.<br>Oscar lance <code>python3 console/build_visits.py --push</code>.</div>`; return }
+  const team=load("miara_vteam")||"all", show=t=>team==="all"||team===t;
+  const stops=V.days.flatMap(d=>d.teams.flatMap(t=>t.stops.map(s=>({...s,day:d.day,team:t.team}))));
+  const ll=s=>s.lat+","+s.lon;
+  const gmap=s=>"https://www.google.com/maps/search/?api=1&query="+ll(s);
+  const route=t=>{ const st=t.stops, last=st[st.length-1];
+    return "https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="+ll(last)+
+      (st.length>1?"&waypoints="+encodeURIComponent(st.slice(0,-1).map(ll).join("|")):"") };
+  const n=()=>stops.filter(s=>show(s.team)).length;
+  m.innerHTML=`<div class="stats">
+      <div class="stat"><b>${n()}</b><span>écoles à visiter</span></div>
+      <div class="stat"><b>${V.days.length}</b><span>jours</span></div>
+      <div class="stat"><b>${(V.visited||[]).length}</b><span>déjà visitée${(V.visited||[]).length>1?"s":""}</span></div></div>
+    <div class="bar">Équipe :
+      ${[["all","Les deux"],["A","Équipe A"],["B","Équipe B"]].map(([k,t])=>`<button class="btn small${team===k?" primary":""}" data-vt="${k}">${t}</button>`).join("")}</div>
+    <div class="card" style="font-size:14px">
+      <b>Dans chaque école :</b> demander le <b>nombre réel de classes</b> en 6e, 5e, 4e et 3e.
+      <div class="sec" style="margin-top:4px">Les classes ci-dessous sont une estimation (élèves ÷ ${V.class_size||50}). Les km sont à vol d'oiseau depuis le centre de Tana, pas par la route.
+      ${(V.visited||[]).length?`<br>Déjà visitée : ${V.visited.map(x=>esc(x.school)).join(", ")}.`:""}</div></div>
+    <div id="vmap"></div>
+    ${V.days.map(d=>{ const ts=d.teams.filter(t=>show(t.team)); if(!ts.length) return "";
+      return `<h2 class="vday">Jour ${d.day}</h2><div class="vgrid">${ts.map(t=>`
+        <div class="card vteam vt-${esc(t.team)}"><h3>Équipe ${esc(t.team)} · ${esc(t.zone)}</h3>
+          <div class="sec">${t.stops.length} école${t.stops.length>1?"s":""} · <a href="${route(t)}" target="_blank" rel="noopener">🧭 Itinéraire Google Maps</a></div>
+          ${t.long?`<div class="vlong">Long trajet : partir tôt le matin.</div>`:""}
+          ${t.stops.map(s=>`<div class="vstop"><div class="vnum">${s.o}</div><div style="min-width:0">
+            <div><b>${esc(s.school)}</b></div>
+            <div class="sec">${esc(s.cisco)} · ${s.km} km de Tana · <a href="${gmap(s)}" target="_blank" rel="noopener">carte</a></div>
+            <div class="sec">≈ ${s.c3e} classes en 3e · élèves 6e/5e/4e/3e : ${s.grades.join(" / ")}</div></div></div>`).join("")}
+        </div>`).join("")}</div>` }).join("")}
+    <p class="sec">Plan mis à jour : ${when(V.updated)}</p>`;
+  m.querySelectorAll("[data-vt]").forEach(b=>b.onclick=()=>{ store("miara_vteam",b.dataset.vt); visitsView(m) });
+  try{ await loadLeaflet() }catch(e){ $("#vmap").outerHTML=`<div class="empty">Carte indisponible (pas de connexion).</div>`; return }
+  const el=$("#vmap"); if(!el) return;
+  const map=L.map(el,{scrollWheelZoom:false});
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap"}).addTo(map);
+  const col=t=>getComputedStyle(document.documentElement).getPropertyValue(t==="A"?"--info":"--brand").trim();
+  const pts=[];
+  stops.filter(s=>show(s.team)).forEach(s=>{ pts.push([s.lat,s.lon]);
+    L.marker([s.lat,s.lon],{icon:L.divIcon({className:"",html:`<div class="vpin" style="background:${col(s.team)}">${s.day}</div>`,iconSize:[24,24],iconAnchor:[12,12]})})
+     .addTo(map).bindPopup(`<b>${esc(s.school)}</b><br>Jour ${s.day} · Équipe ${esc(s.team)} · arrêt ${s.o}<br><a href="${gmap(s)}" target="_blank" rel="noopener">Ouvrir dans Google Maps</a>`) });
+  const tana=stops.filter(s=>show(s.team)&&s.km<15).map(s=>[s.lat,s.lon]);
+  map.fitBounds(L.latLngBounds(tana.length?tana:pts).pad(0.08));
+  const btn=L.control({position:"topright"}); btn.onAdd=()=>{ const b=L.DomUtil.create("button","btn small"); b.textContent="Toute la région";
+    let all=false; b.onclick=e=>{ L.DomEvent.stop(e); all=!all; map.fitBounds(L.latLngBounds(all?pts:(tana.length?tana:pts)).pad(0.08)); b.textContent=all?"Zoom sur Tana":"Toute la région" }; return b };
+  btn.addTo(map);
+}
+
 async function progressView(m){
   m.innerHTML=`<div class="loading">Chargement…</div>`;
   const [p,...kinds]=await Promise.all([api({action:"progress"}),
@@ -1443,6 +1516,7 @@ setInterval(async()=>{ if(!isTodoView()||!S.key||document.hidden||$("#studio")||
 // ---------------------------------------------------------------- démarrage
 S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"todo";
 if(/^#(afaire|todo|ianja)$/i.test(location.hash)) S.tab="todo";
+if(/^#(visites|visits)$/i.test(location.hash)) S.tab="visits";
 if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
 if(!TABS.some(t=>t[0]===S.tab)) S.tab="audio";
 if(S.who && S.key){ api({action:"ping"}).then(r=>{ if(r.ok){ shell(); Q.load() } else loginView() })
