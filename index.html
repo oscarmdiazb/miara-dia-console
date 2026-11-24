@@ -411,7 +411,7 @@ function shell(){
     <main id="main"></main>`;
   $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
   $("#theme").onclick=e=>{ const t=isDark()?"light":"dark"; document.documentElement.dataset.theme=t; store("miara_theme",t);
-    e.currentTarget.textContent=isDark()?"☀️":"🌙" };
+    e.currentTarget.textContent=isDark()?"☀️":"🌙"; if(S.tab==="report") render() };
   $("#lang").onclick=()=>{ S.lang=S.lang==="en"?"fr":"en"; store("miara_lang",S.lang); shell() };
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.view="all"; S.shown=60; store("miara_tab",S.tab);
     if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
@@ -1254,7 +1254,11 @@ async function reportView(m){
   m.innerHTML=`<div class="card rpt" style="padding:12px"><div id="rpthost"></div>
     <p class="sec" style="margin-top:14px">Mis à jour : ${when(r.updated_at)}</p></div>`;
   const sh=$("#rpthost").attachShadow({mode:"open"});
-  sh.innerHTML=r.html.replace(/<script[\s\S]*?<\/script>/gi,"");
+  // The report has its own dark colors under @media (prefers-color-scheme:dark). That follows the computer,
+  // not the console's ☀️/🌙 button → light text on a light page. Make it follow the console instead.
+  sh.innerHTML=r.html.replace(/<script[\s\S]*?<\/script>/gi,"")
+    .replace(/@media\s*\(\s*prefers-color-scheme\s*:\s*dark\s*\)/gi, isDark()?"@media all":"@media not all")
+    +(isDark()?`<style>.mrep.lang-fr .langbar [data-l=fr],.mrep.lang-en .langbar [data-l=en]{background:#e5e7eb;color:#111827}</style>`:"");
   const root=sh.querySelector(".mrep"); if(!root) return;
   const set=l=>{ root.classList.remove("lang-fr","lang-en"); root.classList.add("lang-"+l); store("miara_rep_lang",l) };
   set(load("miara_rep_lang")||(S.lang==="en"?"en":"fr"));
