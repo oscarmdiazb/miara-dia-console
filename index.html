@@ -864,7 +864,8 @@ function goTab(t){ S.tab=t; store("miara_tab",t);
 // These photos HAVE STUDENT NAMES (Oscar's decision, 24 Nov 2026). Supabase is only a transit point:
 // console/pull_rosters.py copies them to Dropbox data/student_lists/ (--purge removes them from Supabase).
 // Offline first: a new list waits on the phone (IndexedDB "miara_rosters") and is sent when the network is back.
-const GRADES=["6e","5e","4e","3e"];
+const GRADES=["4e","3e"];        // baseline: only 4e and 3e (Oscar, 24 Nov 2026)
+const ALL_GRADES=["6e","5e","4e","3e"];   // order of the plan's student counts
 const RS={data:null,plan:null,offline:false};
 const rapi=body=>api(body,"miara_roster_api");
 const rid=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
@@ -926,7 +927,7 @@ function rSchools(){
     if(cisco&&!x.cisco) x.cisco=cisco; if(est) x.est=est; map.set(school,x) };
   if(RS.plan){ const cs=RS.plan.class_size||50;
     (RS.plan.days||[]).forEach(d=>d.teams.forEach(t=>t.stops.forEach(s=>
-      add(s.school,s.cisco,Object.fromEntries(GRADES.map((g,i)=>[g,Math.ceil(((s.grades||[])[i]||0)/cs)]))))));
+      add(s.school,s.cisco,Object.fromEntries(GRADES.map(g=>[g,Math.ceil(((s.grades||[])[ALL_GRADES.indexOf(g)]||0)/cs)]))))));
     (RS.plan.visited||[]).forEach(v=>add(v.school,v.cisco)) }
   else try{ JSON.parse(load("miara_rschools")||"[]").forEach(s=>add(s.school,s.cisco,s.est)) }catch(e){}
   (RS.data?.schools||[]).forEach(s=>add(s.school,s.cisco));
@@ -956,7 +957,7 @@ async function rostersView(m,reload){
   const rows=list.filter(s=>cls.some(c=>c.school===s.school)||Object.keys(dec(s.school)).length||RQ.items.some(it=>it.school===s.school));
   m.innerHTML=`
     ${RS.offline?`<div class="vlong">Pas de connexion. Vous pouvez quand même ajouter des listes : elles restent sur ce téléphone et partent quand le réseau revient. <button class="btn small" id="rretry">Réessayer</button></div>`:""}
-    <div class="help">Dans chaque école, pour <b>chaque classe</b> :
+    <div class="help">Seulement la <b>4e</b> et la <b>3e</b>. Dans chaque école, pour <b>chaque classe</b> de ces 2 niveaux :
       <b>1.</b> Choisissez l'école. <b>2.</b> Touchez <b>+ Nouvelle liste de classe</b>. <b>3.</b> Niveau, classe (A, B…), nombre d'élèves.
       <b>4.</b> 📷 Photographiez <b>toutes les pages</b> de la liste : à plat, bien éclairée, noms lisibles. <b>5.</b> <b>Envoyer</b>.<br>
       Pas de réseau ? Envoyez quand même : la liste attend sur le téléphone (⏳ en haut) et part toute seule. Gardez cette page ouverte.<br>
@@ -1125,7 +1126,7 @@ function rForm(sc,c,mode,D){
   $("#rsend").onclick=async()=>{
     const err=$("#rerr"), b=$("#rsend"), num=id=>{ const v=$("#"+id)?.value; return v===""||v==null?null:parseInt(v,10) };
     if(mode!=="add"){
-      if(!grade) return err.textContent="Choisissez le niveau (6e, 5e, 4e ou 3e).";
+      if(!grade) return err.textContent="Choisissez le niveau (4e ou 3e).";
       if(!sec()) return err.textContent="Écrivez la classe (A, B, 1…).";
       if(num("rg")!=null&&num("rn")!=null&&num("rg")>num("rn")) return err.textContent="Plus de filles que d'élèves ?" }
     if(mode==="edit"){
