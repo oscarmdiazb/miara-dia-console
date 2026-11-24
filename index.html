@@ -109,6 +109,10 @@ h2{font-size:17px;margin:18px 0 8px}
 .rcount label{display:flex;flex-direction:column;font-size:13px;font-weight:700;width:62px}
 .rcount input,.sheetbody input[type=number],.sheetbody input[type=text],.sheetbody input:not([type]){width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:9px 10px;font-size:16px;margin:2px 0 8px}
 .rgrade{margin:18px 0 6px;font-size:17px}
+.rcontact{display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px}
+.rcontact label{display:flex;flex-direction:column;font-size:13px;font-weight:700}
+.rcontact input{width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:9px 10px;font-size:16px;margin-top:2px}
+@media(min-width:640px){.rcontact{grid-template-columns:1fr 1fr 1fr}}
 .rthumbs{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
 .rthumbs img{width:76px;height:76px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
 .rft{position:relative;font-size:12px;max-width:90px;word-break:break-all}
@@ -958,7 +962,8 @@ async function rostersView(m,reload){
   m.innerHTML=`
     ${RS.offline?`<div class="vlong">Pas de connexion. Vous pouvez quand même ajouter des listes : elles restent sur ce téléphone et partent quand le réseau revient. <button class="btn small" id="rretry">Réessayer</button></div>`:""}
     <div class="help">Seulement la <b>4e</b> et la <b>3e</b>. Dans chaque école, pour <b>chaque classe</b> de ces 2 niveaux :
-      <b>1.</b> Choisissez l'école. <b>2.</b> Touchez <b>+ Nouvelle liste de classe</b>. <b>3.</b> Niveau, classe (A, B…), nombre d'élèves.
+      <b>1.</b> Choisissez l'école. <b>2.</b> Écrivez le nombre de classes et le <b>point focal</b> (nom, fonction, téléphone), puis <b>Enregistrer</b>.
+      <b>3.</b> Touchez <b>+ Nouvelle liste de classe</b> : niveau, classe (A, B…), nombre d'élèves.
       <b>4.</b> 📷 Photographiez <b>toutes les pages</b> de la liste : à plat, bien éclairée, noms lisibles. <b>5.</b> <b>Envoyer</b>.<br>
       Pas de réseau ? Envoyez quand même : la liste attend sur le téléphone (⏳ en haut) et part toute seule. Gardez cette page ouverte.<br>
       ⚠ Ces listes ont les <b>noms des élèves</b>. Ne les envoyez pas sur WhatsApp. Après « envoyée ✓ », effacez les photos du téléphone.</div>
@@ -1010,7 +1015,7 @@ function rqBox(){
 }
 
 function rSchoolPanel(sc,D){
-  const box=$("#rschool"), dec=(D.schools.find(y=>y.school===sc.school)||{}).classes||{}, est=sc.est||{};
+  const sr=D.schools.find(y=>y.school===sc.school)||{}, box=$("#rschool"), dec=sr.classes||{}, est=sc.est||{}, ct=sr.contact||{};
   const cls=D.classes.filter(c=>c.school===sc.school);
   const card=c=>{ const q=RQ.items.some(it=>it.school===c.school&&it.grade===c.grade&&it.section===c.section);
     return `<div class="card" data-c="${c.id}"><div class="ch"><b style="font-size:16px">${esc(c.grade)} ${esc(c.section)}</b>
@@ -1029,8 +1034,15 @@ function rSchoolPanel(sc,D){
       <span class="chip s-a_corriger">⏳ pas encore envoyée</span><span class="chip">${f} photo${f>1?"s":""}</span></div></div>` };
   box.innerHTML=`<div class="card"><b>Nombre de classes dans cette école</b> <span class="sec">(demandez à la direction)</span>
       <div class="rcount">${GRADES.map(g=>`<label>${g}<input type="number" min="0" max="60" inputmode="numeric" data-g="${g}" value="${dec[g]??""}" placeholder="${est[g]?"≈"+est[g]:""}"></label>`).join("")}
-        <button class="btn" id="rcsave">Enregistrer</button></div>
-      ${est["3e"]?`<div class="sec">≈ = estimation (élèves ÷ 50). Écrivez le vrai nombre.</div>`:""}</div>
+</div>
+      ${est["3e"]?`<div class="sec">≈ = estimation (élèves ÷ 50). Écrivez le vrai nombre.</div>`:""}
+      <div style="margin-top:12px"><b>Point focal à l'école</b> <span class="sec">(la personne qui nous aide)</span></div>
+      <div class="rcontact">
+        <label>Nom<input type="text" id="rcname" maxlength="120" autocomplete="off" value="${esc(ct.name||"")}"></label>
+        <label>Fonction<input type="text" id="rcrole" maxlength="120" placeholder="Ex. : directeur, surveillant général" value="${esc(ct.role||"")}"></label>
+        <label>Téléphone<input type="tel" id="rcphone" maxlength="40" inputmode="tel" placeholder="034 00 000 00" value="${esc(ct.phone||"")}"></label></div>
+      ${ct.phone?`<a class="btn small" href="tel:${esc(String(ct.phone).replace(/[^\d+]/g,""))}">📞 Appeler</a>`:""}
+      <button class="btn primary" id="rcsave" style="margin-top:8px">Enregistrer</button></div>
     <button class="btn primary bigstart" id="rnew">+ Nouvelle liste de classe</button>
     ${GRADES.map(g=>{ const cs=cls.filter(c=>c.grade===g),
         pe=RQ.items.filter(it=>it.school===sc.school&&it.grade===g&&!cs.some(c=>c.section===it.section)),
@@ -1039,8 +1051,9 @@ function rSchoolPanel(sc,D){
         ${cs.map(card).join("")}${pe.map(pend).join("")}${!cs.length&&!pe.length?`<div class="sec">Aucune liste.</div>`:""}` }).join("")}`;
   $("#rcsave").onclick=async e=>{
     const classes={}; box.querySelectorAll(".rcount input").forEach(i=>{ if(i.value!=="") classes[i.dataset.g]=Math.max(0,parseInt(i.value,10)||0) });
+    const contact={name:$("#rcname").value.trim(),role:$("#rcrole").value.trim(),phone:$("#rcphone").value.trim()};
     e.target.disabled=true;
-    try{ const r=await rapi({action:"set_school",school:sc.school,cisco:sc.cisco,classes}); if(!r.ok) throw new Error(r.error);
+    try{ const r=await rapi({action:"set_school",school:sc.school,cisco:sc.cisco,classes:{...dec,...classes},contact}); if(!r.ok) throw new Error(r.error);
       toast("Enregistré ✓"); rostersView($("#main"),true) }
     catch(err){ e.target.disabled=false; toast("Pas enregistré : "+err.message+" (réseau ?)") } };
   $("#rnew").onclick=()=>rForm(sc,null,"new",D);
