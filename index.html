@@ -104,6 +104,18 @@ h2{font-size:17px;margin:18px 0 8px}
 .vstop{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .vnum{flex:none;width:26px;height:26px;border-radius:50%;background:var(--tc);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px}
 .vlong{background:var(--warn-l);color:var(--warn);border-radius:8px;padding:6px 9px;font-size:13px;margin:6px 0}
+.rsel{width:100%;font-size:16px;padding:10px;margin:4px 0 12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px}
+.rcount{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px}
+.rcount label{display:flex;flex-direction:column;font-size:13px;font-weight:700;width:62px}
+.rcount input,.sheetbody input[type=number],.sheetbody input[type=text],.sheetbody input:not([type]){width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:9px 10px;font-size:16px;margin:2px 0 8px}
+.rgrade{margin:18px 0 6px;font-size:17px}
+.rthumbs{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+.rthumbs img{width:76px;height:76px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block}
+.rft{position:relative;font-size:12px;max-width:90px;word-break:break-all}
+.rft .rx{position:absolute;top:-8px;right:-8px;border-radius:50%;width:24px;height:24px;padding:0;line-height:22px;background:var(--card);border:1px solid var(--line)}
+.rview img{max-width:100%;border-radius:8px;margin-top:6px;display:block}
+.rrow{display:flex;gap:10px}.rrow>div{flex:1}
+.rtab td.n{text-align:center;white-space:nowrap}.rtab tr{cursor:pointer}
 #vmap{height:360px;border-radius:12px;border:1px solid var(--line);margin-bottom:10px;background:var(--grey-l)}
 .vpin{width:24px;height:24px;border-radius:50%;color:#fff;font:700 12px/24px system-ui,sans-serif;text-align:center;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 .sum{display:flex;gap:16px;font-size:15px;margin-bottom:4px}.sum b{font-size:20px}
@@ -312,11 +324,11 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
 const T = (fr,en) => S.lang==="en" ? en : fr;
-const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
 const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
@@ -368,13 +380,13 @@ function loginView(msg){
     S.who=$("#lw").value.trim(); S.key=$("#lk").value.trim();
     try{ const r=await api({action:"ping"});
       if(!r.ok) return loginView("Mot de passe incorrect.");
-      store("miara_who",S.who); store("miara_key",S.key); shell(); Q.load();
+      store("miara_who",S.who); store("miara_key",S.key); shell(); Q.load(); RQ.load();
     }catch(err){ loginView("Pas de connexion internet ? "+err.message) } };
 }
 
 function shell(){
   $("#app").innerHTML = `<header><div class="top"><div class="logo">MIARA-DIA <small>console</small></div>
-    <div class="who"><span id="qbadge"></span><button class="link" id="lang" title="Français / English">${S.lang==="en"?"FR":"EN"}</button>👤 ${esc(S.who)} <button class="link" id="out">${T("changer","log out")}</button></div></div>
+    <div class="who"><span id="qbadge"></span><span id="rqbadge"></span><button class="link" id="lang" title="Français / English">${S.lang==="en"?"FR":"EN"}</button>👤 ${esc(S.who)} <button class="link" id="out">${T("changer","log out")}</button></div></div>
     <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${navOn(k)?"on":""}">${tabName(k,t)}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
     <main id="main"></main>`;
   $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
@@ -389,6 +401,7 @@ async function render(reload){
   const m=$("#main");
   if(S.tab==="progress") return progressView(m);
   if(S.tab==="visits") return visitsView(m);
+  if(S.tab==="rosters") return rostersView(m,reload);
   if(S.tab==="preview") return previewView(m);
   if(S.tab==="issues") return issuesView(m);
   if(S.tab==="modules"){ if(reload) MD.data=null; return modulesView(m) }
@@ -846,6 +859,290 @@ async function issuesView(m){
 }
 function goTab(t){ S.tab=t; store("miara_tab",t);
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.t===t)); render(true) }
+
+// ---------------------------------------------------------------- 🧾 listes de classe (school → class → photos of the student list)
+// These photos HAVE STUDENT NAMES (Oscar's decision, 24 Nov 2026). Supabase is only a transit point:
+// console/pull_rosters.py copies them to Dropbox data/student_lists/ (--purge removes them from Supabase).
+// Offline first: a new list waits on the phone (IndexedDB "miara_rosters") and is sent when the network is back.
+const GRADES=["6e","5e","4e","3e"];
+const RS={data:null,plan:null,offline:false};
+const rapi=body=>api(body,"miara_roster_api");
+const rid=()=>(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
+const RQ={items:[],db:null,busy:false,t:0,err:"",pct:0,cur:"",
+  async open(){ if(this.db!==null) return this.db;
+    try{ this.db=await new Promise((res,rej)=>{ const r=indexedDB.open("miara_rosters",1);
+      r.onupgradeneeded=()=>r.result.createObjectStore("q",{keyPath:"cid"}); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error) }) }
+    catch(e){ this.db=false } return this.db },
+  async load(){ const db=await this.open(); if(!db) return;
+    const all=await new Promise(res=>{ try{ const t=db.transaction("q").objectStore("q").getAll(); t.onsuccess=()=>res(t.result||[]); t.onerror=()=>res([]) }catch(e){ res([]) } });
+    for(const it of all) if(!this.items.some(x=>x.cid===it.cid)) this.items.push(it);
+    this.badge(); if(this.items.length) this.run() },
+  async save(it){ if(!this.items.includes(it)) this.items.push(it); const db=await this.open();
+    if(db) try{ await new Promise((res,rej)=>{ const t=db.transaction("q","readwrite"); t.objectStore("q").put(it); t.oncomplete=res; t.onerror=()=>rej(t.error) }) }catch(e){}
+    this.badge() },
+  async del(cid){ this.items=this.items.filter(x=>x.cid!==cid); const db=await this.open();
+    if(db) try{ db.transaction("q","readwrite").objectStore("q").delete(cid) }catch(e){} this.badge() },
+  left(){ return this.items.reduce((a,x)=>a+x.files.filter(f=>!f.done).length,0) },
+  badge(){ const b=$("#rqbadge"); if(!b) return; const n=this.items.length;
+    b.innerHTML=n?`<span class="chip s-a_corriger" title="Listes de classe pas encore envoyées">⏳ ${n} liste${n>1?"s":""} à envoyer</span> `:"" },
+  up(){ if(S.tab==="rosters") rqBox() },
+  async run(){ if(this.busy||!S.key||!this.items.length) return; this.busy=true; clearTimeout(this.t); this.err="";
+    try{ for(const it of [...this.items]){
+        this.cur=it.cid; this.pct=0; this.up();
+        const c=await rapi({action:"save_class",school:it.school,cisco:it.cisco,grade:it.grade,section:it.section,...it.fields});
+        if(!c.ok){ if(c.error==="mot_de_passe"){ this.err="Mot de passe changé : reconnectez-vous."; throw new Error("stop") }
+          if(c.error==="classe"){ toast("Liste refusée (niveau ou classe manquant)"); await this.del(it.cid); continue }
+          throw new Error(c.error) }
+        for(const f of it.files){ if(f.done) continue;
+          this.cur=f.cid; this.pct=0; this.up();
+          const data=await blobB64(f.blob);
+          const r=await xhrPost("miara_roster_api",{action:"upload",key:S.key,who:it.who||S.who,class_id:c.id,
+                                 cid:f.cid,mime:f.mime,name:f.name,data},p=>{ this.pct=p; this.up() });
+          if(!r.ok){ if(r.error==="mot_de_passe"){ this.err="Mot de passe changé : reconnectez-vous."; throw new Error("stop") }
+            if(["vide","trop_grand"].includes(r.error)){ toast(f.name+" refusé ("+r.error+")"); f.done=true; f.blob=null; await this.save(it); continue }
+            throw new Error(r.error) }
+          f.done=true; f.blob=null; await this.save(it) }
+        await this.del(it.cid); RS.data=null; toast(`${it.grade} ${it.section} envoyée ✓`);
+        if(S.tab==="rosters") rostersView($("#main"),true) }
+    }catch(e){ if(e.message!=="stop"){ this.err="Pas encore envoyé ("+(e.message||"pas de réseau")+"). Nouvel essai dans 15 secondes.";
+        this.t=setTimeout(()=>this.run(),15000) } }
+    finally{ this.busy=false; this.cur=""; this.up() } } };
+window.addEventListener("online",()=>RQ.run());
+window.addEventListener("beforeunload",e=>{ if(RQ.db===false && RQ.items.length){ e.preventDefault(); e.returnValue="" } });
+
+// phone photo of a paper list: keep it readable (max 2200 px, JPEG 0.8 ≈ 300-600 KB)
+function shrinkList(file){
+  return new Promise((ok,ko)=>{ const img=new Image(), u=URL.createObjectURL(file);
+    img.onload=()=>{ const k=Math.min(1,2200/Math.max(img.width,img.height)), c=document.createElement("canvas");
+      c.width=Math.round(img.width*k); c.height=Math.round(img.height*k); c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(u); c.toBlob(b=>b?ok(b):ko(new Error("image")),"image/jpeg",.8) };
+    img.onerror=()=>{ URL.revokeObjectURL(u); ko(new Error("image")) }; img.src=u });
+}
+
+// schools = visit plan + already visited + any school that has data (+ one typed by the team)
+function rSchools(){
+  const map=new Map();
+  const add=(school,cisco,est)=>{ if(!school) return; const x=map.get(school)||{school,cisco:"",est:null};
+    if(cisco&&!x.cisco) x.cisco=cisco; if(est) x.est=est; map.set(school,x) };
+  if(RS.plan){ const cs=RS.plan.class_size||50;
+    (RS.plan.days||[]).forEach(d=>d.teams.forEach(t=>t.stops.forEach(s=>
+      add(s.school,s.cisco,Object.fromEntries(GRADES.map((g,i)=>[g,Math.ceil(((s.grades||[])[i]||0)/cs)]))))));
+    (RS.plan.visited||[]).forEach(v=>add(v.school,v.cisco)) }
+  else try{ JSON.parse(load("miara_rschools")||"[]").forEach(s=>add(s.school,s.cisco,s.est)) }catch(e){}
+  (RS.data?.schools||[]).forEach(s=>add(s.school,s.cisco));
+  (RS.data?.classes||[]).forEach(c=>add(c.school,c.cisco));
+  RQ.items.forEach(it=>add(it.school,it.cisco));
+  const cur=load("miara_rschool"); if(cur) add(cur,"");
+  const list=[...map.values()].sort((a,b)=>a.school.localeCompare(b.school,"fr"));
+  store("miara_rschools",JSON.stringify(list));     // school names only (no students): lets the tab work offline
+  return list;
+}
+
+async function rostersView(m,reload){
+  if(reload||!RS.data){
+    m.innerHTML=`<div class="loading">Chargement…</div>`;
+    try{ const [r,p]=await Promise.all([rapi({action:"list"}), RS.plan?null:api({action:"progress"})]);
+      if(!r.ok){ if(r.error==="mot_de_passe") return loginView("Le mot de passe a changé."); throw new Error(r.error) }
+      RS.data=r; RS.offline=false;
+      if(p&&p.ok) RS.plan=(p.data&&p.data.visits)||{days:[],visited:[]};
+    }catch(e){ RS.data=null; RS.offline=true }
+  }
+  const D=RS.data||{schools:[],classes:[]}, list=rSchools(), cls=D.classes;
+  const cur=load("miara_rschool");
+  const dec=s=>(D.schools.find(y=>y.school===s)||{}).classes||{};
+  const sent=(s,g)=>cls.filter(c=>c.school===s&&c.grade===g&&c.files.length).length;
+  const nFiles=cls.reduce((a,c)=>a+c.files.length,0), nStud=cls.reduce((a,c)=>a+(c.n||0),0);
+  const cell=(s,g)=>{ const n=sent(s,g), d=dec(s)[g]; return d!=null?`${n} / ${d}`:(n||"–") };
+  const rows=list.filter(s=>cls.some(c=>c.school===s.school)||Object.keys(dec(s.school)).length||RQ.items.some(it=>it.school===s.school));
+  m.innerHTML=`
+    ${RS.offline?`<div class="vlong">Pas de connexion. Vous pouvez quand même ajouter des listes : elles restent sur ce téléphone et partent quand le réseau revient. <button class="btn small" id="rretry">Réessayer</button></div>`:""}
+    <div class="help">Dans chaque école, pour <b>chaque classe</b> :
+      <b>1.</b> Choisissez l'école. <b>2.</b> Touchez <b>+ Nouvelle liste de classe</b>. <b>3.</b> Niveau, classe (A, B…), nombre d'élèves.
+      <b>4.</b> 📷 Photographiez <b>toutes les pages</b> de la liste : à plat, bien éclairée, noms lisibles. <b>5.</b> <b>Envoyer</b>.<br>
+      Pas de réseau ? Envoyez quand même : la liste attend sur le téléphone (⏳ en haut) et part toute seule. Gardez cette page ouverte.<br>
+      ⚠ Ces listes ont les <b>noms des élèves</b>. Ne les envoyez pas sur WhatsApp. Après « envoyée ✓ », effacez les photos du téléphone.</div>
+    <div class="stats">
+      <div class="stat"><b>${new Set(cls.filter(c=>c.files.length).map(c=>c.school)).size}</b><span>écoles avec des listes</span></div>
+      <div class="stat"><b>${cls.filter(c=>c.files.length).length}</b><span>classes envoyées</span></div>
+      <div class="stat"><b>${nFiles}</b><span>photos / fichiers</span></div>
+      <div class="stat"><b>${nStud}</b><span>élèves (sur les listes)</span></div></div>
+    <div id="rq"></div>
+    <label class="lang" for="rsch">École</label>
+    <select id="rsch" class="rsel"><option value="">— Choisir l'école —</option>
+      ${list.map(s=>`<option value="${esc(s.school)}"${s.school===cur?" selected":""}>${esc(s.school)}${s.cisco?" · "+esc(s.cisco):""}</option>`).join("")}
+      <option value="__new">+ Autre école (pas dans la liste)…</option></select>
+    <div id="rschool"></div>
+    <h2>Toutes les écoles</h2>
+    ${rows.length?`<div style="overflow-x:auto"><table class="rtab"><tr><th>École</th>${GRADES.map(g=>`<th class="n">${g}</th>`).join("")}<th class="n">Élèves</th></tr>
+      ${rows.map(s=>`<tr data-s="${esc(s.school)}"><td><b>${esc(s.school)}</b><div class="sec">${esc(s.cisco)}</div></td>
+        ${GRADES.map(g=>`<td class="n">${cell(s.school,g)}</td>`).join("")}
+        <td class="n">${cls.filter(c=>c.school===s.school).reduce((a,c)=>a+(c.n||0),0)||"–"}</td></tr>`).join("")}</table></div>
+      <p class="sec">« 2 / 4 » = 2 classes envoyées sur 4 classes dans l'école.</p>`
+      :`<div class="empty">Aucune liste pour l'instant.</div>`}`;
+  $("#rretry")?.addEventListener("click",()=>{ rostersView(m,true); RQ.run() });
+  $("#rsch").onchange=e=>{ let v=e.target.value;
+    if(v==="__new"){ v=(prompt("Nom de l'école (comme sur la liste du ministère) :","")||"").trim().replace(/\s+/g," ");
+      if(!v){ e.target.value=cur; return } }
+    store("miara_rschool",v); rostersView(m,false) };
+  m.querySelectorAll(".rtab tr[data-s]").forEach(tr=>tr.onclick=()=>{ store("miara_rschool",tr.dataset.s); rostersView(m,false); window.scrollTo({top:0,behavior:"smooth"}) });
+  rqBox();
+  if(cur) rSchoolPanel(list.find(s=>s.school===cur)||{school:cur,cisco:"",est:null}, D);
+}
+
+function rqBox(){
+  const box=$("#rq"); if(!box) return;
+  if(!RQ.items.length){ box.innerHTML=""; return }
+  box.innerHTML=`<div class="card"><b>⏳ Pas encore envoyé (${RQ.items.length})</b>
+    ${RQ.items.map(it=>{ const f=it.files.filter(x=>!x.done).length, on=RQ.cur&&(RQ.cur===it.cid||it.files.some(x=>x.cid===RQ.cur));
+      return `<div class="vstop"><div style="flex:1;min-width:0"><b>${esc(it.grade)} ${esc(it.section)}</b> · ${esc(it.school)}
+        <div class="sec">${f} photo${f>1?"s":""} à envoyer${on?` · envoi ${Math.round(100*RQ.pct)}%`:""}</div>
+        ${on?`<div class="prog" style="margin:4px 0 0"><i style="width:${Math.round(100*RQ.pct)}%"></i></div>`:""}</div>
+        <button class="btn small" data-rqdel="${esc(it.cid)}" title="Supprimer du téléphone">🗑</button></div>` }).join("")}
+    ${RQ.err?`<div class="err">${esc(RQ.err)}</div>`:""}
+    ${RQ.db===false?`<div class="err">Ce navigateur ne peut pas garder les listes : ne fermez pas cette page avant « envoyée ✓ ».</div>`:""}
+    <button class="btn small" id="rqgo" ${RQ.busy?"disabled":""}>${RQ.busy?"Envoi…":"Envoyer maintenant"}</button></div>`;
+  $("#rqgo").onclick=()=>RQ.run();
+  box.querySelectorAll("[data-rqdel]").forEach(b=>b.onclick=async()=>{
+    if(RQ.busy) return toast("Attendez la fin de l'envoi.");
+    if(!confirm("Supprimer cette liste du téléphone ? Elle ne sera pas envoyée.")) return;
+    await RQ.del(b.dataset.rqdel); rostersView($("#main"),false) });
+}
+
+function rSchoolPanel(sc,D){
+  const box=$("#rschool"), dec=(D.schools.find(y=>y.school===sc.school)||{}).classes||{}, est=sc.est||{};
+  const cls=D.classes.filter(c=>c.school===sc.school);
+  const card=c=>{ const q=RQ.items.some(it=>it.school===c.school&&it.grade===c.grade&&it.section===c.section);
+    return `<div class="card" data-c="${c.id}"><div class="ch"><b style="font-size:16px">${esc(c.grade)} ${esc(c.section)}</b>
+      ${c.n!=null?`<span class="chip">${c.n} élèves</span>`:`<span class="chip s-a_corriger">nombre d'élèves ?</span>`}
+      ${c.girls!=null?`<span class="chip">${c.girls} filles</span>`:""}
+      ${c.files.length?`<span class="chip s-verifie">✓ ${c.files.length} photo${c.files.length>1?"s":""}</span>`:`<span class="chip s-a_corriger">pas de photo</span>`}
+      ${q?`<span class="chip s-a_corriger">⏳ photos en attente</span>`:""}</div>
+      ${c.note?`<div class="sec">${esc(c.note)}</div>`:""}
+      <div class="rthumbs">${c.files.map((f,k)=>`<button class="btn small" data-f="${f.id}">${/^image\//.test(f.mime)?"🖼":"📄"} ${k+1}${f.here?"":" · Dropbox"}</button>`).join("")}</div>
+      <div class="rview"></div>
+      <div class="sec">${esc(c.who)} · ${when(c.at)}</div>
+      <div class="foot"><button class="btn" data-a="add">📷 Ajouter des photos</button><button class="btn" data-a="edit">✏️ Modifier</button>
+        ${c.files.length?"":`<button class="btn" data-a="del">🗑 Supprimer la classe</button>`}</div></div>` };
+  const pend=it=>{ const f=it.files.filter(x=>!x.done).length;
+    return `<div class="card"><div class="ch"><b style="font-size:16px">${esc(it.grade)} ${esc(it.section)}</b>
+      <span class="chip s-a_corriger">⏳ pas encore envoyée</span><span class="chip">${f} photo${f>1?"s":""}</span></div></div>` };
+  box.innerHTML=`<div class="card"><b>Nombre de classes dans cette école</b> <span class="sec">(demandez à la direction)</span>
+      <div class="rcount">${GRADES.map(g=>`<label>${g}<input type="number" min="0" max="60" inputmode="numeric" data-g="${g}" value="${dec[g]??""}" placeholder="${est[g]?"≈"+est[g]:""}"></label>`).join("")}
+        <button class="btn" id="rcsave">Enregistrer</button></div>
+      ${est["3e"]?`<div class="sec">≈ = estimation (élèves ÷ 50). Écrivez le vrai nombre.</div>`:""}</div>
+    <button class="btn primary bigstart" id="rnew">+ Nouvelle liste de classe</button>
+    ${GRADES.map(g=>{ const cs=cls.filter(c=>c.grade===g),
+        pe=RQ.items.filter(it=>it.school===sc.school&&it.grade===g&&!cs.some(c=>c.section===it.section)),
+        n=cs.filter(c=>c.files.length).length;
+      return `<h3 class="rgrade">${g} <span class="sec">· ${n}${dec[g]!=null?" / "+dec[g]:""} classe${n>1?"s":""} envoyée${n>1?"s":""}</span></h3>
+        ${cs.map(card).join("")}${pe.map(pend).join("")}${!cs.length&&!pe.length?`<div class="sec">Aucune liste.</div>`:""}` }).join("")}`;
+  $("#rcsave").onclick=async e=>{
+    const classes={}; box.querySelectorAll(".rcount input").forEach(i=>{ if(i.value!=="") classes[i.dataset.g]=Math.max(0,parseInt(i.value,10)||0) });
+    e.target.disabled=true;
+    try{ const r=await rapi({action:"set_school",school:sc.school,cisco:sc.cisco,classes}); if(!r.ok) throw new Error(r.error);
+      toast("Enregistré ✓"); rostersView($("#main"),true) }
+    catch(err){ e.target.disabled=false; toast("Pas enregistré : "+err.message+" (réseau ?)") } };
+  $("#rnew").onclick=()=>rForm(sc,null,"new",D);
+  box.querySelectorAll(".card[data-c]").forEach(el=>{
+    const c=cls.find(x=>x.id==el.dataset.c);
+    el.querySelectorAll("[data-a]").forEach(b=>b.onclick=async()=>{
+      if(b.dataset.a==="add") return rForm(sc,c,"add",D);
+      if(b.dataset.a==="edit") return rForm(sc,c,"edit",D);
+      if(!confirm(`Supprimer la classe ${c.grade} ${c.section} ?`)) return;
+      try{ const r=await rapi({action:"delete_class",id:c.id}); if(!r.ok) throw new Error(r.error); toast("Supprimée"); rostersView($("#main"),true) }
+      catch(err){ toast("Pas supprimée : "+err.message) } });
+    el.querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>rShowFile(el.querySelector(".rview"),c.files.find(f=>f.id==b.dataset.f)));
+  });
+}
+
+async function rShowFile(view,f){
+  view.innerHTML=`<div class="sec">Chargement…</div>`;
+  try{ const r=await rapi({action:"get",id:f.id});
+    if(!r.ok) throw new Error(r.error==="dans_dropbox"?"déjà copiée dans Dropbox (plus dans la console)":r.error);
+    const bin=Uint8Array.from(atob(r.data),ch=>ch.charCodeAt(0)), url=URL.createObjectURL(new Blob([bin],{type:r.mime||"application/octet-stream"}));
+    view.innerHTML=`${/^image\//.test(r.mime)?`<img src="${url}" alt="Liste de classe">`:`<a class="btn" href="${url}" download="${esc(r.name||"liste")}">📄 Ouvrir ${esc(r.name||"le fichier")}</a>`}
+      <div class="foot"><button class="btn small" data-v="close">Fermer</button><button class="btn small" data-v="del">🗑 Retirer cette photo</button>
+        <span class="sec">${esc(f.who)} · ${when(f.at)}</span></div>`;
+    view.querySelector('[data-v="close"]').onclick=()=>{ URL.revokeObjectURL(url); view.innerHTML="" };
+    view.querySelector('[data-v="del"]').onclick=async()=>{
+      if(!confirm("Retirer cette photo ? (par exemple : floue, mauvaise classe)")) return;
+      const d=await rapi({action:"delete_file",id:f.id}); if(d.ok){ toast("Photo retirée"); rostersView($("#main"),true) } else toast("Pas retirée : "+d.error) };
+  }catch(e){ view.innerHTML=`<div class="err">${esc(e.message)}</div>` }
+}
+
+function rForm(sc,c,mode,D){
+  $("#rsheet")?.remove();
+  const d=document.createElement("div"); d.className="sheet"; d.id="rsheet";
+  const title=mode==="edit"?`Modifier ${c.grade} ${c.section}`:mode==="add"?`Ajouter des photos · ${c.grade} ${c.section}`:"Nouvelle liste de classe";
+  let grade=c?.grade||""; const files=[];
+  d.innerHTML=`<div class="sheetbox" role="dialog" aria-label="${esc(title)}">
+    <div class="st-top"><b>${esc(title)}</b><button class="btn" data-x>✕</button></div>
+    <div class="sheetbody">
+      <div class="sec" style="margin-bottom:8px">🏫 ${esc(sc.school)}</div>
+      ${mode==="add"?"":`
+        <div class="lang">Niveau</div>
+        <div class="tchips" style="margin-bottom:10px">${GRADES.map(g=>`<button class="tchip" data-g="${g}" aria-pressed="${g===grade}">${g}</button>`).join("")}</div>
+        <label class="lang" for="rsec">Classe (lettre ou numéro, comme l'école l'écrit)</label>
+        <input id="rsec" type="text" maxlength="20" placeholder="A" autocapitalize="characters" value="${esc(c?.section||"")}">
+        <div class="rrow"><div><label class="lang" for="rn">Nombre d'élèves</label><input id="rn" type="number" min="1" max="250" inputmode="numeric" value="${c?.n??""}"></div>
+          <div><label class="lang" for="rg">dont filles</label><input id="rg" type="number" min="0" max="250" inputmode="numeric" value="${c?.girls??""}"></div></div>`}
+      ${mode==="edit"?"":`
+        <div class="lang">Photos de la liste (toutes les pages)</div>
+        <div class="foot" style="margin-top:4px"><label class="btn primary">📷 Prendre une photo<input type="file" id="rcam" accept="image/*" capture="environment" hidden></label>
+          <label class="btn">🖼 Choisir (photos, PDF, Excel)<input type="file" id="rpick" accept="image/*,application/pdf,.pdf,.xlsx,.xls,.csv,.doc,.docx" multiple hidden></label></div>
+        <div id="rfiles" class="rthumbs"></div>`}
+      ${mode==="add"?"":`<label class="lang" for="rnote">Note (facultatif)</label>
+        <input id="rnote" type="text" maxlength="500" placeholder="Ex. : liste du 25 nov., 2 élèves partis" value="${esc(c?.note||"")}">`}
+      <div class="sec" id="rdup"></div>
+      <div class="err" id="rerr"></div>
+      <button class="btn primary" id="rsend" style="width:100%;margin-top:12px;padding:12px;font-size:16px">${mode==="edit"?"Enregistrer":"Envoyer"}</button>
+    </div></div>`;
+  document.body.appendChild(d); document.body.classList.add("noscroll");
+  const close=()=>{ files.forEach(f=>f.url&&URL.revokeObjectURL(f.url)); d.remove(); document.body.classList.remove("noscroll") };
+  d.querySelector("[data-x]").onclick=close;
+  d.onclick=e=>{ if(e.target===d && (!files.length || confirm("Fermer sans envoyer ?"))) close() };
+  const sec=()=>($("#rsec")?.value||c?.section||"").trim().toUpperCase().replace(/\s+/g," ");
+  const dup=()=>{ const el=$("#rdup"); if(!el||mode!=="new") return;
+    const x=D.classes.find(y=>y.school===sc.school&&y.grade===grade&&y.section===sec());
+    el.textContent=x?`${grade} ${sec()} existe déjà : les photos seront ajoutées à cette classe.`:"" };
+  d.querySelectorAll(".tchip[data-g]").forEach(b=>b.onclick=()=>{ grade=b.dataset.g;
+    d.querySelectorAll(".tchip[data-g]").forEach(x=>x.setAttribute("aria-pressed",x===b)); dup() });
+  $("#rsec")?.addEventListener("input",dup);
+  const show=()=>{ const el=$("#rfiles"); if(!el) return;
+    el.innerHTML=files.map((f,k)=>`<div class="rft">${f.url?`<img src="${f.url}" alt="Page ${k+1}">`:`📄 ${esc(f.name)}`}
+      <button class="rx" data-k="${k}" aria-label="Enlever">✕</button><div class="sec">Page ${k+1}</div></div>`).join("");
+    el.querySelectorAll(".rx").forEach(b=>b.onclick=()=>{ const f=files.splice(+b.dataset.k,1)[0]; if(f?.url) URL.revokeObjectURL(f.url); show() }) };
+  const addFiles=async list=>{ const err=$("#rerr"); err.textContent="";
+    for(const file of list){
+      let blob=file, mime=file.type||"application/octet-stream", name=file.name||"photo.jpg";
+      if(/^image\//.test(mime)||/\.(heic|heif)$/i.test(name)){
+        try{ blob=await shrinkList(file); mime="image/jpeg"; name=name.replace(/\.\w+$/,"")+".jpg" }
+        catch(e){ /* not readable here (HEIC on Chrome…): send the original */ } }
+      if(blob.size>15e6){ err.textContent=name+" est trop grand (max 15 Mo)."; continue }
+      files.push({cid:rid(),blob,mime,name,done:false,url:mime==="image/jpeg"||/^image\/(png|webp|gif)/.test(mime)?URL.createObjectURL(blob):""}) }
+    show() };
+  ["rcam","rpick"].forEach(id=>{ const i=$("#"+id); if(i) i.onchange=async e=>{ await addFiles([...e.target.files]); e.target.value="" } });
+  $("#rsend").onclick=async()=>{
+    const err=$("#rerr"), b=$("#rsend"), num=id=>{ const v=$("#"+id)?.value; return v===""||v==null?null:parseInt(v,10) };
+    if(mode!=="add"){
+      if(!grade) return err.textContent="Choisissez le niveau (6e, 5e, 4e ou 3e).";
+      if(!sec()) return err.textContent="Écrivez la classe (A, B, 1…).";
+      if(num("rg")!=null&&num("rn")!=null&&num("rg")>num("rn")) return err.textContent="Plus de filles que d'élèves ?" }
+    if(mode==="edit"){
+      b.disabled=true;
+      try{ const r=await rapi({action:"save_class",id:c.id,grade,section:sec(),n:num("rn"),girls:num("rg"),note:$("#rnote").value.trim()});
+        if(!r.ok) throw new Error(r.error); close(); toast("Enregistré ✓"); rostersView($("#main"),true) }
+      catch(e){ b.disabled=false; err.textContent="Pas enregistré : "+e.message+(String(e.message).includes("409")?" (cette classe existe déjà)":" (réseau ?)") }
+      return }
+    if(!files.length) return err.textContent="Ajoutez au moins une photo de la liste.";
+    const fields={};
+    if(mode==="new"){ if(num("rn")!=null) fields.n=num("rn"); if(num("rg")!=null) fields.girls=num("rg");
+      const note=$("#rnote").value.trim(); if(note) fields.note=note }
+    const it={cid:rid(),school:sc.school,cisco:sc.cisco||"",grade:mode==="add"?c.grade:grade,section:mode==="add"?c.section:sec(),
+      fields,who:S.who,at:Date.now(),files:files.map(({cid,blob,mime,name})=>({cid,blob,mime,name,done:false}))};
+    b.disabled=true; await RQ.save(it); close();
+    toast("Gardée sur le téléphone · envoi…"); rostersView($("#main"),false); RQ.run() };
+}
 
 // ---------------------------------------------------------------- avancement
 // ---------------------------------------------------------------- 🚐 visites écoles (plan written by console/build_visits.py)
@@ -1517,10 +1814,12 @@ setInterval(async()=>{ if(!isTodoView()||!S.key||document.hidden||$("#studio")||
 S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"todo";
 if(/^#(afaire|todo|ianja)$/i.test(location.hash)) S.tab="todo";
 if(/^#(visites|visits)$/i.test(location.hash)) S.tab="visits";
+if(/^#(listes|lists|rosters)$/i.test(location.hash)) S.tab="rosters";
 if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
 if(!TABS.some(t=>t[0]===S.tab)) S.tab="audio";
-if(S.who && S.key){ api({action:"ping"}).then(r=>{ if(r.ok){ shell(); Q.load() } else loginView() })
-  .catch(()=>{ loginView("Pas de connexion internet ? Les prises non envoyées restent sur ce téléphone.") }) }
+if(S.who && S.key){ api({action:"ping"}).then(r=>{ if(r.ok){ shell(); Q.load(); RQ.load() } else loginView() })
+  .catch(()=>{ if(S.tab==="rosters"){ shell(); RQ.load(); return }   // no network at school: lists can still be added
+    loginView("Pas de connexion internet ? Les prises non envoyées restent sur ce téléphone.") }) }
 else loginView();
 </script>
 </body>
