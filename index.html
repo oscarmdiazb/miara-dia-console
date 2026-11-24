@@ -328,11 +328,11 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["plan","🗺 Plan baseline"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["plan","🗺 Plan baseline"],["report","📊 Rapports"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
 const T = (fr,en) => S.lang==="en" ? en : fr;
-const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",plan:"🗺 Baseline plan",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",plan:"🗺 Baseline plan",report:"📊 Reports",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
 const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
@@ -405,6 +405,7 @@ async function render(reload){
   const m=$("#main");
   if(S.tab==="progress") return progressView(m);
   if(S.tab==="visits") return visitsView(m);
+  if(S.tab==="report") return reportView(m);
   if(S.tab==="rosters") return rostersView(m,reload);
   if(S.tab==="preview") return previewView(m);
   if(S.tab==="issues") return issuesView(m);
@@ -1221,6 +1222,28 @@ async function visitsView(m){
   btn.addTo(map);
 }
 
+// ---------------------------------------------------------------- 📊 Rapports (read only)
+// Finished reports for the team, made by code (baseline: Dropbox data_work/1_baseline/code/1_hfc/8_team_report.R,
+// sent by console/push_report.py). Numbers only, no names. The report carries its own FR/EN switch.
+async function reportView(m){
+  m.innerHTML=`<div class="loading">Chargement…</div>`;
+  let r;
+  try{ r=await api({action:"get",name:"baseline"},"miara_report_api") }
+  catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)} <button class="btn small" onclick="render(true)">Réessayer</button></div>`; return }
+  if(!r.ok && r.error==="mot_de_passe") return loginView("Le mot de passe a changé.");
+  if(!r.ok){ m.innerHTML=`<div class="empty">Pas encore de rapport.<br>Oscar lance <code>python3 console/push_report.py</code>.</div>`; return }
+  // Shadow DOM: the report's own CSS (.bar, .who, .card…) and the console's CSS do not touch each other.
+  m.innerHTML=`<div class="card rpt" style="padding:12px"><div id="rpthost"></div>
+    <p class="sec" style="margin-top:14px">Mis à jour : ${when(r.updated_at)}</p></div>`;
+  const sh=$("#rpthost").attachShadow({mode:"open"});
+  sh.innerHTML=r.html.replace(/<script[\s\S]*?<\/script>/gi,"");
+  const root=sh.querySelector(".mrep"); if(!root) return;
+  const set=l=>{ root.classList.remove("lang-fr","lang-en"); root.classList.add("lang-"+l); store("miara_rep_lang",l) };
+  set(load("miara_rep_lang")||(S.lang==="en"?"en":"fr"));
+  root.querySelectorAll(".langbar button").forEach(b=>b.onclick=()=>set(b.dataset.l));
+  root.querySelectorAll(".toc a").forEach(a=>a.onclick=e=>{ e.preventDefault(); const t=root.querySelector(a.getAttribute("href")); if(t) t.scrollIntoView({behavior:"smooth"}) });
+}
+
 async function progressView(m){
   m.innerHTML=`<div class="loading">Chargement…</div>`;
   const [p,...kinds]=await Promise.all([api({action:"progress"}),
@@ -1829,6 +1852,7 @@ S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"todo
 if(/^#(afaire|todo|ianja)$/i.test(location.hash)) S.tab="todo";
 if(/^#(visites|visits)$/i.test(location.hash)) S.tab="visits";
 if(/^#(listes|lists|rosters)$/i.test(location.hash)) S.tab="rosters";
+if(/^#(rapport|rapports|report|reports)$/i.test(location.hash)) S.tab="report";
 if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
 if(!TABS.some(t=>t[0]===S.tab)) S.tab="audio";
 if(S.who && S.key){ api({action:"ping"}).then(r=>{ if(r.ok){ shell(); Q.load(); RQ.load() } else loginView() })
