@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Console MIARA-DIA</title>
+<script>try{const t=localStorage.getItem("miara_theme"); if(t==="light"||t==="dark") document.documentElement.dataset.theme=t}catch(e){}</script>
 <style>
 :root{
   --bg:#FBF6F2; --card:#FFFFFF; --ink:#2B2220; --muted:#7A6A64; --line:#EADBD2;
@@ -20,6 +21,16 @@
     --info:#9CC3EA; --info-l:#1F3042; --grey-l:#352D2A;
   }
 }
+/* ☀️ / 🌙 button: data-theme on <html> wins over the phone/computer setting */
+:root[data-theme="dark"]{
+  --bg:#1D1816; --card:#2A2321; --ink:#F3ECE8; --muted:#B9AAA3; --line:#463A36;
+  --brand:#E0937B; --brand-d:#F2B8A5; --brand-l:#4A2E26;
+  --ok:#7FD3A0; --ok-l:#1F3A2A; --warn:#F2C95C; --warn-l:#3D3216; --bad:#F2A19B; --bad-l:#4A2422;
+  --info:#9CC3EA; --info-l:#1F3042; --grey-l:#352D2A;
+}
+:root{color-scheme:light dark}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -331,6 +342,8 @@ const TABS = [
   ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["plan","🗺 Plan baseline"],["report","📊 Rapports"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
+const isDark = () => { const t=document.documentElement.dataset.theme;
+  return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches };
 const T = (fr,en) => S.lang==="en" ? en : fr;
 const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",plan:"🗺 Baseline plan",report:"📊 Reports",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
@@ -390,10 +403,12 @@ function loginView(msg){
 
 function shell(){
   $("#app").innerHTML = `<header><div class="top"><div class="logo">MIARA-DIA <small>console</small></div>
-    <div class="who"><span id="qbadge"></span><span id="rqbadge"></span><button class="link" id="lang" title="Français / English">${S.lang==="en"?"FR":"EN"}</button>👤 ${esc(S.who)} <button class="link" id="out">${T("changer","log out")}</button></div></div>
+    <div class="who"><span id="qbadge"></span><span id="rqbadge"></span><button class="link" id="theme" title="${T("Mode clair / sombre","Light / dark mode")}">${isDark()?"☀️":"🌙"}</button><button class="link" id="lang" title="Français / English">${S.lang==="en"?"FR":"EN"}</button>👤 ${esc(S.who)} <button class="link" id="out">${T("changer","log out")}</button></div></div>
     <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${navOn(k)?"on":""}">${tabName(k,t)}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
     <main id="main"></main>`;
   $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
+  $("#theme").onclick=e=>{ const t=isDark()?"light":"dark"; document.documentElement.dataset.theme=t; store("miara_theme",t);
+    e.currentTarget.textContent=isDark()?"☀️":"🌙" };
   $("#lang").onclick=()=>{ S.lang=S.lang==="en"?"fr":"en"; store("miara_lang",S.lang); shell() };
   document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.view="all"; S.shown=60; store("miara_tab",S.tab);
     if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
