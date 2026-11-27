@@ -342,13 +342,13 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["plan","🗺 Plan baseline"],["report","📊 Rapports"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["consent","📨 Consentements"],["plan","🗺 Plan baseline"],["report","📊 Rapports"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
 const isDark = () => { const t=document.documentElement.dataset.theme;
   return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches };
 const T = (fr,en) => S.lang==="en" ? en : fr;
-const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",plan:"🗺 Baseline plan",report:"📊 Reports",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",consent:"📨 Consent forms",plan:"🗺 Baseline plan",report:"📊 Reports",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
 const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
@@ -425,6 +425,7 @@ async function render(reload){
   if(S.tab==="visits") return visitsView(m);
   if(S.tab==="report") return reportView(m);
   if(S.tab==="rosters") return rostersView(m,reload);
+  if(S.tab==="consent") return consentView(m);
   if(S.tab==="preview") return previewView(m);
   if(S.tab==="issues") return issuesView(m);
   if(S.tab==="modules"){ if(reload) MD.data=null; return modulesView(m) }
@@ -1240,6 +1241,72 @@ async function visitsView(m){
   btn.addTo(map);
 }
 
+// ---------------------------------------------------------------- 📨 Consentements
+// One WhatsApp message per school for the director: which students get the parental consent form (baseline).
+// Made in Dropbox (data_work/2_randomization/code/6_consent_lists.py), sent here by console/push_consent.py.
+// THE TEXT HAS STUDENT NAMES (Oscar allowed it, 27 Nov 2026): it stays in memory only, never in localStorage,
+// and the database erases it 48 h after "✓ Envoyé". Nothing about circles or arms is in it.
+const CS={open:"",msg:"",date:""};
+async function consentView(m){
+  m.innerHTML=`<div class="loading">Chargement…</div>`;
+  let r;
+  try{ r=await api({action:"list"},"miara_consent_api") }
+  catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)} <button class="btn small" onclick="render(true)">Réessayer</button></div>`; return }
+  if(!r.ok && r.error==="mot_de_passe") return loginView("Le mot de passe a changé.");
+  const L=r.schools||[];
+  if(!L.length){ m.innerHTML=`<div class="empty">Pas encore de message.<br>Oscar lance <code>python3 console/push_consent.py</code>.</div>`; return }
+  const todo=L.filter(s=>!s.sent_at).length;
+  const card=s=>{ const open=CS.open===s.school;
+    const st=s.sent_at?`<span class="chip s-valide">✓ Envoyé · ${esc(s.sent_by)} · ${when(s.sent_at)}${s.visit_date?` · visite : ${esc(s.visit_date)}`:""}</span>`
+                      :`<span class="chip s-a_enregistrer">À envoyer</span>`;
+    return `<div class="card" data-cs="${esc(s.school)}">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>${esc(s.school)}</b>
+        <span class="sec">${s.n_classes} classe${s.n_classes>1?"s":""} · ${s.n_forms} formulaires</span><span class="meta">${st}</span></div>
+      ${!s.has_text?`<div class="sec" style="margin-top:6px">Le texte est effacé de la console (envoyé depuis plus de 48 h). Besoin de le renvoyer ? Demandez à Oscar.</div>`
+        :!open?`<div style="margin-top:8px"><button class="btn${s.sent_at?"":" primary"}" data-a="open">${s.sent_at?"Revoir le message":"Préparer le message"}</button></div>`
+        :`<div style="margin-top:10px">
+          <label class="sec" for="csdate"><b>1.</b> Date de la visite, comme vous l'écrivez au directeur</label>
+          <input id="csdate" placeholder="ex. mardi 1er décembre" value="${esc(CS.date)}" autocomplete="off"
+            style="width:100%;box-sizing:border-box;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:9px 10px;font-size:16px;margin:2px 0 10px">
+          <div class="sec"><b>2.</b> Le message (vous ne pouvez pas le changer ici)</div>
+          <textarea id="cstext" readonly rows="14" style="font-size:13.5px;margin:2px 0 10px"></textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn primary" data-a="copy">📋 Copier le message</button>
+            ${s.sent_at?`<button class="btn" data-a="unsent">Annuler « envoyé »</button>`:`<button class="btn" data-a="sent">✓ J'ai envoyé le message</button>`}
+            <button class="btn" data-a="close">Fermer</button></div></div>`}
+    </div>` };
+  m.innerHTML=`<div class="help"><b>Formulaires de consentement.</b> Pour chaque collège, envoyez ce message WhatsApp au <b>directeur / à la directrice</b> :
+      il dit à quels élèves donner le formulaire. <b>1.</b> Écrivez la date de la visite. <b>2.</b> « Copier le message ».
+      <b>3.</b> Collez-le dans WhatsApp, pour le directeur de <b>ce</b> collège seulement. <b>4.</b> « ✓ J'ai envoyé le message ».<br>
+      ⚠ Le message a des <b>noms d'élèves</b> : ne l'envoyez à personne d'autre, ne changez pas la liste, ne remplacez aucun élève.
+      Le texte s'efface de la console 48 h après l'envoi.</div>
+    <div class="sec" style="margin:0 2px 8px">${L.length} collèges · ${todo} à envoyer · ${L.length-todo} envoyé${L.length-todo>1?"s":""}</div>
+    ${L.map(card).join("")}`;
+  const filled=()=>CS.msg.replace("[DATE]",CS.date.trim()||"[DATE]");
+  const ta=$("#cstext"), di=$("#csdate");
+  if(ta){ ta.value=filled(); di.oninput=()=>{ CS.date=di.value; ta.value=filled() } }
+  m.querySelectorAll("[data-cs] [data-a]").forEach(b=>b.onclick=async()=>{
+    const school=b.closest("[data-cs]").dataset.cs, a=b.dataset.a;
+    try{
+      if(a==="close"){ CS.open=""; CS.msg=""; return consentView(m) }
+      if(a==="open"){ const g=await api({action:"get",school},"miara_consent_api");
+        if(!g.ok) return toast(g.error==="efface"?"Texte effacé. Demandez à Oscar.":"Erreur : "+g.error);
+        CS.open=school; CS.msg=g.message; CS.date=g.visit_date||""; return consentView(m) }
+      if(a==="copy"){ if(!CS.date.trim()){ di.focus(); return toast("Écrivez d'abord la date de la visite.") }
+        const t=filled();
+        try{ await navigator.clipboard.writeText(t) }catch(e){ ta.removeAttribute("readonly"); ta.select(); document.execCommand("copy"); ta.setAttribute("readonly",""); getSelection().removeAllRanges() }
+        return toast("Copié. Collez-le dans WhatsApp, au directeur de "+school+".") }
+      if(a==="sent"){ if(!CS.date.trim()){ di.focus(); return toast("Écrivez d'abord la date de la visite.") }
+        if(!confirm("Vous avez envoyé le message au directeur de "+school+" ?")) return;
+        const x=await api({action:"sent",school,visit_date:CS.date.trim()},"miara_consent_api"); if(!x.ok) return toast("Erreur : "+x.error);
+        CS.open=""; CS.msg=""; toast("Noté : envoyé."); return consentView(m) }
+      if(a==="unsent"){ if(!confirm("Remettre "+school+" dans « À envoyer » ?")) return;
+        const x=await api({action:"unsent",school},"miara_consent_api"); if(!x.ok) return toast("Erreur : "+x.error);
+        return consentView(m) }
+    }catch(e){ toast("Pas de connexion ? "+e.message) }
+  });
+}
+
 // ---------------------------------------------------------------- 📊 Rapports (read only)
 // Finished reports for the team, made by code (baseline: Dropbox data_work/1_baseline/code/1_hfc/8_team_report.R,
 // sent by console/push_report.py). Numbers only, no names. The report carries its own FR/EN switch.
@@ -1875,6 +1942,7 @@ if(/^#(afaire|todo|ianja)$/i.test(location.hash)) S.tab="todo";
 if(/^#(visites|visits)$/i.test(location.hash)) S.tab="visits";
 if(/^#(listes|lists|rosters)$/i.test(location.hash)) S.tab="rosters";
 if(/^#(rapport|rapports|report|reports)$/i.test(location.hash)) S.tab="report";
+if(/^#(consentements?|consent)$/i.test(location.hash)) S.tab="consent";
 if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
 if(!TABS.some(t=>t[0]===S.tab)) S.tab="audio";
 if(S.who && S.key){ api({action:"ping"}).then(r=>{ if(r.ok){ shell(); Q.load(); RQ.load() } else loginView() })
