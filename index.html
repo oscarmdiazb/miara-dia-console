@@ -42,9 +42,42 @@ header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px 
 .logo{font-weight:800;color:var(--ink);letter-spacing:.3px}
 .logo small{font-weight:500;color:var(--muted)}
 .who{margin-left:auto;color:var(--muted);font-size:13px;display:flex;gap:8px;align-items:center}
-nav{display:flex;gap:4px;overflow-x:auto;padding:0 12px;max-width:1100px;margin:0 auto}
-nav button{border:0;background:none;padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;color:var(--muted);font-weight:600}
-nav button.on{color:var(--brand);border-bottom-color:var(--brand)}
+nav{display:flex;max-width:1100px;margin:0 auto}
+nav.grp{padding:0 8px}
+nav.grp button{flex:1 1 auto;min-width:0;border:0;background:none;padding:10px 4px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted);font-weight:700}
+nav.grp button.on{color:var(--brand);border-bottom-color:var(--brand)}
+#navsub{background:var(--card);border-bottom:1px solid var(--line)}
+#navsub:empty{display:none}
+nav.sub{flex-wrap:wrap;gap:6px;padding:8px 12px}
+nav.grp .nbadge{min-width:16px;padding:0 4px;font-size:10.5px;line-height:16px}
+.calbody .chip{white-space:normal;display:inline-block}
+nav.sub button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px;cursor:pointer;white-space:nowrap;color:var(--muted);font-weight:600;font-size:13.5px}
+nav.sub button.on{background:var(--brand-l);border-color:var(--brand);color:var(--brand)}
+@media (max-width:520px){nav.grp{padding:0 4px}nav.grp button{font-size:13px;padding:9px 2px}.top{padding:8px 12px}
+  nav.sub{gap:5px;padding:7px 8px}nav.sub button{font-size:13px;padding:4px 10px}}
+a.btn{text-decoration:none;display:inline-block}
+.calbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.calbar select{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 9px;max-width:100%}
+.calseg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.calseg button{border:0;background:var(--card);padding:7px 12px;cursor:pointer;color:var(--muted);font-weight:600}
+.calseg button.on{background:var(--brand-l);color:var(--brand)}
+.calday{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700;margin-bottom:2px}
+.calday>b::first-letter{text-transform:uppercase}
+.calev{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line)}
+.calwhen{flex:0 0 62px;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;display:flex;flex-direction:column}
+.calwhen b{color:var(--ink)}
+.calbody{flex:1;min-width:0}
+.calppl{font-size:13.5px;margin-top:3px}.calppl .me{font-weight:700;color:var(--brand)}
+.calbtn{display:flex;gap:6px;flex:none}
+.ca-consent{background:var(--warn-l);color:var(--warn)}.ca-baseline{background:var(--brand-l);color:var(--brand)}
+.ca-seance{background:var(--ok-l);color:var(--ok)}.ca-endline{background:var(--info-l);color:var(--info)}
+.ca-listes,.ca-autre{background:var(--grey-l);color:var(--muted)}
+.calgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px}
+.calgrid label,.calnote{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted)}
+.calgrid input,.calgrid select,#cfnew{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:9px 10px;font-size:16px;width:100%}
+.calchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.chipbtn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--muted);font-weight:600}
+.chipbtn.on{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
 main{max-width:1100px;margin:0 auto;padding:16px}
 .btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 12px;cursor:pointer}
 .btn:hover{border-color:var(--brand)}
@@ -342,15 +375,22 @@ const SUPA_KEY = "sb_publishable_UFUOEVVstVLUEGs7ZzvsBw_ZIPstDkd";
 
 const S = { who:"", key:"", tab:"audio", items:{}, filters:{}, shown:60, people:new Set() };
 const TABS = [
-  ["todo","✅ À faire"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["consent","📨 Consentements"],["plan","🗺 Plan baseline"],["report","📊 Rapports"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
+  ["todo","✅ À faire"],["cal","📅 Calendrier"],["visits","🚐 Visites écoles"],["rosters","🧾 Listes de classe"],["consent","📨 Consentements"],["plan","🗺 Plan baseline"],["report","📊 Rapports"],["modules","📋 Modules"],["audio","🎙 Audio enquête"],["choice","Audio choix de réponses"],["game","🎮 Jeux"],["preview","👁 Aperçu"],["issues","🛠 Problèmes"],["progress","Avancement"]];
 // English for the co-authors: menu + Modules tab (the other tabs stay in French: use the browser's Translate)
 S.lang = load("miara_lang")==="en" ? "en" : "fr";
 const isDark = () => { const t=document.documentElement.dataset.theme;
   return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches };
 const T = (fr,en) => S.lang==="en" ? en : fr;
-const TABS_EN = {todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",consent:"📨 Consent forms",plan:"🗺 Baseline plan",report:"📊 Reports",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
+const TABS_EN = {cal:"📅 Calendar",todo:"✅ To do",visits:"🚐 School visits",rosters:"🧾 Class lists",consent:"📨 Consent forms",plan:"🗺 Baseline plan",report:"📊 Reports",modules:"📋 Modules",audio:"🎙 Survey audio",choice:"Answer audio",game:"🎮 Games",preview:"👁 Preview",
   issues:"🛠 Problems",progress:"Progress"};
 const tabName = (k,t) => S.lang==="en" ? (TABS_EN[k]||t) : t;
+// The menu has 2 levels: 4 groups (always visible, also on a phone), then the tabs of the open group.
+const GROUPS = [
+  ["field","🚐 Terrain","🚐 Field",["cal","visits","rosters","consent","progress"]],
+  ["survey","📝 Enquête","📝 Survey",["plan","modules","preview","issues"]],
+  ["audio","🎙 Audios","🎙 Audio",["todo","audio","choice","game"]],
+  ["report","📊 Rapports","📊 Reports",["report"]]];
+const groupOf = k => GROUPS.find(g=>g[3].includes(k)) || GROUPS[2];
 const ST_TEXT = [["vide","Vide"],["brouillon","Brouillon"],["a_revoir","À revoir"],["valide","Validé"]];
 const ST_AUDIO = [["a_enregistrer","À enregistrer"],["enregistre","Enregistré"],["verifie","Vérifié"],["a_corriger","À corriger"]];
 const LABEL = Object.fromEntries([...ST_TEXT,...ST_AUDIO]);
@@ -407,21 +447,34 @@ function loginView(msg){
 function shell(){
   $("#app").innerHTML = `<header><div class="top"><div class="logo">MIARA-DIA <small>console</small></div>
     <div class="who"><span id="qbadge"></span><span id="rqbadge"></span><button class="link" id="theme" title="${T("Mode clair / sombre","Light / dark mode")}">${isDark()?"☀️":"🌙"}</button><button class="link" id="lang" title="Français / English">${S.lang==="en"?"FR":"EN"}</button>👤 ${esc(S.who)} <button class="link" id="out">${T("changer","log out")}</button></div></div>
-    <nav>${TABS.map(([k,t])=>`<button data-t="${k}" class="${navOn(k)?"on":""}">${tabName(k,t)}${k==="issues"?` <span class="nbadge" id="ibadge" hidden></span>`:""}</button>`).join("")}</nav></header>
+    <div id="navs"></div></header><div id="navsub"></div>
     <main id="main"></main>`;
   $("#out").onclick=()=>{ store("miara_key"); S.key=""; loginView() };
   $("#theme").onclick=e=>{ const t=isDark()?"light":"dark"; document.documentElement.dataset.theme=t; store("miara_theme",t);
     e.currentTarget.textContent=isDark()?"☀️":"🌙"; if(S.tab==="report") render() };
   $("#lang").onclick=()=>{ S.lang=S.lang==="en"?"fr":"en"; store("miara_lang",S.lang); shell() };
-  document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>{ S.tab=b.dataset.t; S.view="all"; S.shown=60; store("miara_tab",S.tab);
-    if(S.tab==="todo"){ S.tab="audio"; S.view="todo" }
-    document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b)); render(true) });
-  render(true); Q.badge(); isLoad().catch(()=>{});
+  drawNav(); render(true); Q.badge(); isLoad().catch(()=>{});
 }
+const curKey = () => isTodoView() ? "todo" : S.tab;
+function drawNav(){
+  const el=$("#navs"); if(!el) return;
+  const g=groupOf(curKey()), bd=` <span class="nbadge ibadge" hidden></span>`;
+  // the groups stay at the top of the screen (sticky header); the tabs of the group scroll away with the page
+  el.innerHTML=`<nav class="grp">${GROUPS.map(x=>`<button data-g="${x[0]}" class="${x===g?"on":""}">${T(x[1],x[2])}${x[0]==="survey"&&x!==g?bd:""}</button>`).join("")}</nav>`;
+  $("#navsub").innerHTML=g[3].length>1?`<nav class="sub">${g[3].map(k=>`<button data-t="${k}" class="${navOn(k)?"on":""}">${tabName(k,TABS.find(t=>t[0]===k)[1])}${k==="issues"?bd:""}</button>`).join("")}</nav>`:"";
+  document.querySelectorAll("nav.sub button").forEach(b=>b.onclick=()=>setTab(b.dataset.t));
+  el.querySelectorAll("nav.grp button").forEach(b=>b.onclick=()=>{ const x=GROUPS.find(y=>y[0]===b.dataset.g), last=load("miara_gtab_"+x[0]);
+    setTab(x[3].includes(last)?last:x[3][0]) });
+  isBadge();
+}
+function setTab(k){ S.tab=k; S.view="all"; S.shown=60; store("miara_tab",k); store("miara_gtab_"+groupOf(k)[0],k);
+  if(k==="todo"){ S.tab="audio"; S.view="todo" }
+  drawNav(); render(true) }
 
 async function render(reload){
   const m=$("#main");
   if(S.tab==="progress") return progressView(m);
+  if(S.tab==="cal") return calendarView(m,reload);
   if(S.tab==="visits") return visitsView(m);
   if(S.tab==="report") return reportView(m);
   if(S.tab==="rosters") return rostersView(m,reload);
@@ -742,9 +795,9 @@ async function isLoad(){
   IS.list=r.issues; isBadge(); return IS.list;
 }
 function isBadge(){
-  const b=$("#ibadge"); if(!b||!IS.list) return;
+  if(!IS.list) return;
   const n=IS.list.filter(x=>x.status==="ouvert").length;
-  b.textContent=n||""; b.hidden=!n;
+  document.querySelectorAll(".ibadge").forEach(b=>{ b.textContent=n||""; b.hidden=!n });
 }
 
 // what a card / screen is, for a report
@@ -881,8 +934,7 @@ async function issuesView(m){
       catch(e){ b.disabled=false; toast("Pas enregistré: "+e.message) }
     }) });
 }
-function goTab(t){ S.tab=t; store("miara_tab",t);
-  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x.dataset.t===t)); render(true) }
+function goTab(t){ S.tab=t; store("miara_tab",t); drawNav(); render(true) }
 
 // ---------------------------------------------------------------- 🧾 listes de classe (school → class → photos of the student list)
 // These photos HAVE STUDENT NAMES (Oscar's decision, 24 Nov 2026). Supabase is only a transit point:
@@ -1239,6 +1291,118 @@ async function visitsView(m){
   const btn=L.control({position:"topright"}); btn.onAdd=()=>{ const b=L.DomUtil.create("button","btn small"); b.textContent="Toute la région";
     let all=false; b.onclick=e=>{ L.DomEvent.stop(e); all=!all; map.fitBounds(L.latLngBounds(all?pts:(tana.length?tana:pts)).pad(0.08)); b.textContent=all?"Zoom sur Tana":"Toute la région" }; return b };
   btn.addTo(map);
+}
+
+// ---------------------------------------------------------------- 📅 Calendrier
+// Who goes where, when, to do what. The team writes it here (anyone logged in can add or change a visit).
+// Table miara_calendar, RPC miara_calendar_api (list / save / delete). School names and first names only.
+const CAL={data:null,view:load("miara_cal_view")==="school"?"school":"day",who:load("miara_cal_who"),past:false,edit:null};
+const CAL_ACT=[["consent","Formulaires de consentement"],["baseline","Enquête de base"],["seance","Séance (cercle)"],["endline","Enquête finale"],["listes","Listes de classe"],["autre","Autre"]];
+const calAct=k=>(CAL_ACT.find(a=>a[0]===k)||["","?"])[1];
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const calDay=(s,o)=>new Date(s+"T12:00:00").toLocaleDateString("fr-FR",o||{weekday:"long",day:"numeric",month:"long"});
+const sameName=(a,b)=>String(a).trim().toLowerCase()===String(b).trim().toLowerCase();
+const calMin=h=>{ const x=/(\d{1,2})\s*[h:.]?\s*(\d{2})?/i.exec(h||""); return x?(+x[1])*60+(+(x[2]||0)):9999 };
+function calPeople(){ const out=[]; for(const p of [S.who,...CAL.data.events.flatMap(e=>e.people)]) if(p&&!out.some(q=>sameName(q,p))) out.push(p);
+  return out.sort((a,b)=>a.localeCompare(b,"fr")) }
+async function calendarView(m,reload){
+  if(reload||!CAL.data){
+    m.innerHTML=`<div class="loading">Chargement…</div>`;
+    let r;
+    try{ r=await api({action:"list"},"miara_calendar_api") }
+    catch(e){ m.innerHTML=`<div class="empty">Erreur: ${esc(e.message)} <button class="btn small" onclick="render(true)">Réessayer</button></div>`; return }
+    if(!r.ok){ if(r.error==="mot_de_passe") return loginView("Le mot de passe a changé."); m.innerHTML=`<div class="empty">Erreur: ${esc(r.error)}</div>`; return }
+    r.events.sort((a,b)=>a.day.localeCompare(b.day)||calMin(a.hour)-calMin(b.hour)||a.school.localeCompare(b.school));
+    CAL.data=r;
+  }
+  const D=CAL.data, today=ymd(new Date()), tomorrow=ymd(new Date(Date.now()+864e5)), people=calPeople();
+  const gps=Object.fromEntries(D.schools.map(s=>[s.school,s]));
+  if(CAL.who && !people.some(p=>sameName(p,CAL.who))) CAL.who="";
+  const ev=D.events.filter(e=>(CAL.past||e.day>=today)&&(!CAL.who||e.people.some(p=>sameName(p,CAL.who))));
+  const nPast=D.events.filter(e=>e.day<today).length;
+  const row=(e,bySchool)=>`<div class="calev" data-id="${e.id}">
+      <div class="calwhen">${bySchool?`<b>${esc(calDay(e.day,{weekday:"short",day:"numeric",month:"short"}))}</b>`:""}<span>${esc(e.hour)}</span></div>
+      <div class="calbody"><div><span class="chip ca-${e.activity}">${esc(calAct(e.activity))}</span>${bySchool?"":` <b>${esc(e.school||"—")}</b>`}</div>
+        <div class="calppl">👥 ${e.people.length?e.people.map(p=>`<span class="${sameName(p,S.who)?"me":""}">${esc(p)}</span>`).join(", "):`<i class="sec">personne encore</i>`}</div>
+        ${e.note?`<div class="sec" style="white-space:pre-wrap">${esc(e.note)}</div>`:""}</div>
+      <div class="calbtn">${!bySchool&&gps[e.school]?`<a class="btn small" target="_blank" rel="noopener" title="Voir sur la carte" href="https://www.google.com/maps/search/?api=1&query=${gps[e.school].lat},${gps[e.school].lon}">📍</a>`:""}<button class="btn small" data-a="edit">Modifier</button></div></div>`;
+  let body;
+  if(CAL.view==="day"){
+    const days=[...new Set(ev.map(e=>e.day))];
+    body=days.length?days.map(d=>{ const L=ev.filter(e=>e.day===d);
+      return `<div class="card"><div class="calday"><b>${esc(calDay(d))}</b>${d===today?`<span class="chip s-valide">Aujourd'hui</span>`:d===tomorrow?`<span class="chip s-a_revoir">Demain</span>`:""}
+        <span class="meta">${L.length} visite${L.length>1?"s":""}</span></div>${L.map(e=>row(e,false)).join("")}</div>` }).join("")
+      :`<div class="empty">${CAL.who?`Rien de prévu pour ${esc(CAL.who)}.`:"Rien de prévu pour l'instant."}<br>Touchez <b>＋ Ajouter une visite</b>.</div>`;
+  }else{
+    const names=[...D.schools.map(s=>s.school),...new Set(ev.map(e=>e.school).filter(s=>s&&!gps[s]))];
+    body=names.map(s=>{ const L=ev.filter(e=>e.school===s), g=gps[s];
+      return `<div class="card"><div class="calday"><b>${esc(s)}</b>${g?`<span class="sec">${esc(g.cisco)}</span>`:""}
+        <span class="meta">${g?`<a class="btn small" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${g.lat},${g.lon}">📍 Carte</a> `:""}<button class="btn small" data-add="${esc(s)}">＋</button></span></div>
+        ${L.length?L.map(e=>row(e,true)).join(""):`<div class="sec" style="padding:4px 0">Rien de prévu.</div>`}</div>` }).join("");
+  }
+  m.innerHTML=`${CAL.edit?calForm(people):""}
+    <div class="help"><b>Calendrier de l'équipe.</b> Qui va où, quand, pour faire quoi. Tout le monde peut ajouter ou corriger une visite. Votre prénom est en <b style="color:var(--brand)">bleu</b>.</div>
+    <div class="calbar">
+      <div class="calseg"><button data-v="day" class="${CAL.view==="day"?"on":""}">Par jour</button><button data-v="school" class="${CAL.view==="school"?"on":""}">Par collège</button></div>
+      <select id="calwho" aria-label="Qui"><option value="">Toute l'équipe</option>${people.map(p=>`<option ${sameName(p,CAL.who)?"selected":""}>${esc(p)}${sameName(p,S.who)?" (moi)":""}</option>`).join("")}</select>
+      ${nPast?`<label class="sec" style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="calpast" ${CAL.past?"checked":""} style="width:auto;padding:0"> Voir aussi le passé (${nPast})</label>`:""}
+      ${CAL.edit?"":`<button class="btn primary" id="caladd" style="margin-left:auto">＋ Ajouter une visite</button>`}
+    </div>${body}`;
+  const open=e=>{ CAL.edit=e; calendarView(m); const f=$("#calform"); if(f) f.scrollIntoView({block:"start"}) };
+  const blank=school=>({id:null,day:today,hour:"",activity:"baseline",school:school||"",people:[],note:""});
+  m.querySelectorAll(".calseg button").forEach(b=>b.onclick=()=>{ CAL.view=b.dataset.v; store("miara_cal_view",CAL.view); calendarView(m) });
+  $("#calwho").onchange=e=>{ CAL.who=e.target.value.replace(/ \(moi\)$/,""); store("miara_cal_who",CAL.who||undefined); calendarView(m) };
+  if($("#calpast")) $("#calpast").onchange=e=>{ CAL.past=e.target.checked; calendarView(m) };
+  if($("#caladd")) $("#caladd").onclick=()=>open(blank());
+  m.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>open(blank(b.dataset.add)));
+  m.querySelectorAll(".calev [data-a=edit]").forEach(b=>b.onclick=()=>{ const e=D.events.find(x=>x.id===+b.closest(".calev").dataset.id);
+    if(e) open({...e,people:[...e.people]}) });
+  if(CAL.edit) calFormBind(m);
+}
+function calForm(people){
+  const e=CAL.edit, D=CAL.data, names=[...people]; e.people.forEach(p=>{ if(!names.some(q=>sameName(q,p))) names.push(p) });
+  const schools=D.schools.map(s=>s.school); if(e.school&&!schools.includes(e.school)) schools.push(e.school);
+  return `<div class="card" id="calform" style="border-color:var(--brand)"><b>${e.id?"Modifier la visite":"Nouvelle visite"}</b>
+    <div class="calgrid">
+      <label>Quand<input type="date" id="cfday" value="${esc(e.day)}"></label>
+      <label>Heure (si vous la connaissez)<input id="cfhour" placeholder="8h00" value="${esc(e.hour)}" autocomplete="off"></label>
+      <label>Pour faire quoi<select id="cfact">${CAL_ACT.map(a=>`<option value="${a[0]}" ${a[0]===e.activity?"selected":""}>${esc(a[1])}</option>`).join("")}</select></label>
+      <label>Où<select id="cfschool"><option value="">— (pas dans un collège)</option>${schools.map(s=>`<option ${s===e.school?"selected":""}>${esc(s)}</option>`).join("")}</select></label>
+    </div>
+    <div class="sec" style="margin-top:10px">Qui y va (touchez les prénoms)</div>
+    <div class="calchips" id="cfppl">${names.map(p=>`<button type="button" class="chipbtn ${e.people.some(q=>sameName(q,p))?"on":""}" data-p="${esc(p)}">${esc(p)}</button>`).join("")}</div>
+    <div style="display:flex;gap:6px;margin-top:6px;max-width:340px"><input id="cfnew" placeholder="Ajouter un prénom" autocomplete="off"><button type="button" class="btn" id="cfaddp">＋</button></div>
+    <label class="calnote" style="margin-top:10px">Note (classe, matériel, point de rendez-vous…)<textarea id="cfnote" rows="2">${esc(e.note)}</textarea></label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn primary" id="cfsave">Enregistrer</button>
+      ${e.id?"":`<button class="btn" id="cfsave2">Enregistrer + une autre visite</button>`}
+      <button class="btn" id="cfcancel">Annuler</button>
+      ${e.id?`<button class="btn" id="cfdel" style="margin-left:auto;color:var(--bad)">Supprimer</button>`:""}</div></div>`;
+}
+function calFormBind(m){
+  const chip=b=>b.onclick=()=>b.classList.toggle("on");
+  m.querySelectorAll("#cfppl .chipbtn").forEach(chip);
+  const addP=()=>{ const v=$("#cfnew").value.trim().slice(0,40); if(!v) return;
+    let b=[...m.querySelectorAll("#cfppl .chipbtn")].find(x=>sameName(x.dataset.p,v));
+    if(!b){ b=document.createElement("button"); b.type="button"; b.className="chipbtn"; b.dataset.p=v; b.textContent=v; $("#cfppl").appendChild(b); chip(b) }
+    b.classList.add("on"); $("#cfnew").value="" };
+  $("#cfaddp").onclick=addP;
+  $("#cfnew").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); addP() } };
+  const read=()=>{ addP(); return {id:CAL.edit.id,day:$("#cfday").value,hour:$("#cfhour").value.trim(),activity:$("#cfact").value,school:$("#cfschool").value,
+    people:[...m.querySelectorAll("#cfppl .chipbtn.on")].map(b=>b.dataset.p),note:$("#cfnote").value.trim()} };
+  const save=async again=>{ const e=read();
+    if(!e.day) return toast("Choisissez la date.");
+    if(!e.school && !e.note) return toast("Choisissez le collège, ou écrivez une note.");
+    try{ const r=await api({action:"save",...e},"miara_calendar_api"); if(!r.ok) return toast("Pas enregistré : "+r.error);
+      CAL.edit=again?{...e,id:null,school:"",note:""}:null; toast("Enregistré ✓"); await calendarView(m,true);
+      if(again){ const f=$("#calform"); if(f) f.scrollIntoView({block:"start"}) }
+    }catch(err){ toast("Pas de connexion ? "+err.message) } };
+  $("#cfsave").onclick=()=>save(false);
+  if($("#cfsave2")) $("#cfsave2").onclick=()=>save(true);
+  $("#cfcancel").onclick=()=>{ CAL.edit=null; calendarView(m) };
+  if($("#cfdel")) $("#cfdel").onclick=async()=>{ if(!confirm("Supprimer cette visite du calendrier ?")) return;
+    try{ const r=await api({action:"delete",id:CAL.edit.id},"miara_calendar_api"); if(!r.ok) return toast("Erreur : "+r.error);
+      CAL.edit=null; toast("Supprimé."); calendarView(m,true) }catch(err){ toast("Pas de connexion ? "+err.message) } };
 }
 
 // ---------------------------------------------------------------- 📨 Consentements
@@ -1939,6 +2103,7 @@ setInterval(async()=>{ if(!isTodoView()||!S.key||document.hidden||$("#studio")||
 // ---------------------------------------------------------------- démarrage
 S.who=load("miara_who"); S.key=load("miara_key"); S.tab=load("miara_tab")||"todo";
 if(/^#(afaire|todo|ianja)$/i.test(location.hash)) S.tab="todo";
+if(/^#(calendrier|calendar|agenda)$/i.test(location.hash)) S.tab="cal";
 if(/^#(visites|visits)$/i.test(location.hash)) S.tab="visits";
 if(/^#(listes|lists|rosters)$/i.test(location.hash)) S.tab="rosters";
 if(/^#(rapport|rapports|report|reports)$/i.test(location.hash)) S.tab="report";
