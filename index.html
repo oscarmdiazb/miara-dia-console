@@ -605,6 +605,9 @@ function refreshProgress(sec){
   if(d) d.querySelector("summary").innerHTML=groupSum(sec);
 }
 
+// Malagasy drafted by AI (Claude): note starts with 🤖. Shown until « ✓ Texte prêt ».
+function isAi(i){ return /^🤖/.test(i.note||"") }
+
 function card(i){
   const audio=S.tab==="audio", cur=S.tab==="curriculum";
   const v = audio ? i.id.slice(6) : "", lk = audio ? linkOf(i) : "";
@@ -617,9 +620,11 @@ function card(i){
        :audio?`<span class="saveas">${esc(v)}</span><span class="chip s-${i.status}">${SHORT[i.status]||i.status}</span>`
              :`<span class="ref">${esc(i.ref.split(" · ").pop())}</span>`}
       ${i.flag&&!tOk?`<span class="chip s-a_revoir" title="${esc(i.flag)}">⚠ texte à vérifier</span>`:""}
+      ${isAi(i)&&!tOk?`<span class="chip s-a_corriger">🤖 Brouillon IA : à revoir en profondeur</span>`:""}
       ${lk?`<span class="chip s-verifie">🔗 Clip des filles « ${esc(lk)} »</span>`:""}
       ${lk&&gOf(lk)&&gOf(lk).status!=="verifie"?`<span class="chip s-a_corriger" style="white-space:normal">⚠ le clip des filles est « ${esc(SHORT[gOf(lk).status]||gOf(lk).status)} » : il sert aussi aux garçons</span>`:""}
     </div>
+    ${audio&&isAi(i)&&!tOk?`<div class="opts">${esc(i.note)}</div>`:""}
     ${audio&&isBoy(i)&&i.note?`<div class="opts">${lk?"Rien à enregistrer. ":""}${esc(i.note)}</div>`:""}
     <div class="cols">
       <div>
@@ -1965,6 +1970,7 @@ function studioRender(){
   <div class="stext">
     <div class="st-name"><span class="saveas">${esc(v)}</span>${i.flag?` <span class="chip s-a_revoir">⚠ texte à vérifier</span>`:""}${lk?` <span class="chip s-verifie">🔗 Clip des filles « ${esc(lk)} » — rien à faire</span>`:""}</div>
     ${isBoy(i)&&i.note&&!lk?`<div class="frbox">${esc(i.note)}</div>`:""}
+    ${isAi(i)&&!i.text_ready?`<div class="frbox">🤖 ${esc(i.note)}</div>`:""}
     ${ST.edit?`<textarea id="stedit" class="mg read" rows="8">${esc(q)}</textarea>
       <div class="foot"><button class="btn primary" id="stsave">Sauvegarder</button><button class="btn" id="stcancel">Annuler</button></div>`
       :`<div class="readbig">${readHtml(q)}</div>`}
